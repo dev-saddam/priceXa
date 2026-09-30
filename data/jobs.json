@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "id": "job-1790768394429-u19o",
+    "tenantId": "tenant-apex",
+    "type": "batch_auto_match",
+    "title": "Background Competitor Search for Apex AirFlow Performance Running Singlet",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "productIds": [
+        "prod-1790768394413-se6k"
+      ]
+    },
+    "createdAt": "2026-09-30T11:39:54.429Z",
+    "startedAt": "2026-09-30T11:39:54.431Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "matchesSaved": 1,
+      "durationMs": 31529
+    },
+    "completedAt": "2026-09-30T11:40:25.966Z"
+  }
+]

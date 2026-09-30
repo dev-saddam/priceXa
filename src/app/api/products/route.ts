@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getProducts, addProduct, clearAllProducts } from '@/lib/server/db';
+import { enqueueJob } from '@/lib/server/queue';
 
 export async function GET(req: Request) {
   try {
@@ -20,6 +21,19 @@ export async function POST(req: Request) {
     }
 
     const created = await addProduct(body);
+
+    // Automatically start competitor search in background
+    try {
+      await enqueueJob(
+        created.tenantId,
+        'batch_auto_match',
+        `Background Competitor Search for ${created.name}`,
+        { tenantId: created.tenantId, productIds: [created.id] }
+      );
+    } catch (err) {
+      console.warn('Background search enqueue failed, continuing:', err);
+    }
+
     return NextResponse.json({ success: true, product: created });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });

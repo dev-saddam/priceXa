@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { bulkImportProducts, recalculateMarketPositions } from '@/lib/server/db';
+import { enqueueJob } from '@/lib/server/queue';
 
 export async function POST(req: Request) {
   try {
@@ -12,6 +13,18 @@ export async function POST(req: Request) {
 
     const imported = await bulkImportProducts(tenantId, rows);
     await recalculateMarketPositions(tenantId);
+
+    // Automatically start competitor search in background for imported SKUs
+    try {
+      await enqueueJob(
+        tenantId,
+        'batch_auto_match',
+        `Auto-matching ${imported.length} imported SKUs across competitors`,
+        { tenantId, productIds: imported.map((p) => p.id) }
+      );
+    } catch (err) {
+      console.warn('Background search enqueue failed for CSV, continuing:', err);
+    }
 
     return NextResponse.json({
       success: true,

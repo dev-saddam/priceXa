@@ -76,7 +76,31 @@
       "autoRepriceRecommendation": false
     }
   ],
-  "products": [],
+  "products": [
+    {
+      "name": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
+      "brand": "SKECHERS",
+      "code": "APX-011",
+      "category": "Footwear",
+      "mrp": 6000,
+      "currentPrice": 5000,
+      "costPrice": 3000,
+      "minMarginPercent": 30,
+      "stockStatus": "in_stock",
+      "stockCount": 50,
+      "productUrl": "https://www.skechers.in/",
+      "imageUrl": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
+      "tenantId": "tenant-apex",
+      "id": "prod-1790767765446-0x53",
+      "createdAt": "2026-09-30",
+      "matchesCount": 1,
+      "marketPosition": "competitive",
+      "matchingStatus": "partially_matched",
+      "lowestCompetitorPrice": 5000,
+      "averageCompetitorPrice": 5000,
+      "isSearchingCompetitors": false
+    }
+  ],
   "competitors": [
     {
       "id": "comp-amazon",
@@ -86,7 +110,7 @@
       "baseUrl": "https://www.amazon.com",
       "logo": "📦",
       "status": "active",
-      "monitoredProductsCount": 0,
+      "monitoredProductsCount": 2,
       "avgPriceDiffPercent": 0,
       "lastScrapedAt": "Today at 08:02 AM"
     },
@@ -175,7 +199,66 @@
       "lastScrapedAt": "Yesterday at 08:07 PM"
     }
   ],
-  "matches": [],
+  "matches": [
+    {
+      "id": "match-1790767832491-comp-amazon-2lbv",
+      "tenantId": "tenant-apex",
+      "productId": "prod-1790767765446-0x53",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "Skechers Men's D'Lux Walker 2.0 Rezinate",
+      "competitorProductUrl": "https://amazon.com/dp/B0DB2XPLQZ",
+      "matchConfidence": 75,
+      "matchType": "title_search",
+      "currentPrice": 5000,
+      "previousPrice": 5000,
+      "priceDiff": 0,
+      "priceDiffPercent": 0,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "2026-09-30T11:30:32.491Z",
+          "price": 5000,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed",
+      "channelType": "marketplace",
+      "platform": "amazon",
+      "sellerName": "AMAZON Verified Buybox"
+    },
+    {
+      "id": "match-bg-1790768421172-comp-amazon-gjbs",
+      "tenantId": "tenant-apex",
+      "productId": "prod-1790768394413-se6k",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "TLRUN Men’s Performance Running Tank Top Ultra Lightweight Singlet",
+      "competitorProductUrl": "https://amazon.com/dp/B093H5DJNJ",
+      "matchConfidence": 60,
+      "matchType": "title_search",
+      "currentPrice": 58,
+      "previousPrice": 58,
+      "priceDiff": 0,
+      "priceDiffPercent": 0,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "Today",
+          "price": 58,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed",
+      "channelType": "marketplace",
+      "platform": "amazon",
+      "sellerName": "AMAZON Verified Buybox"
+    }
+  ],
   "alertRules": [
     {
       "id": "rule-1",
@@ -291,5 +374,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-09-30T11:24:47.820Z"
+  "lastUpdated": "2026-09-30T11:40:25.965Z"
 }

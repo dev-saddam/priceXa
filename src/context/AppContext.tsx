@@ -73,6 +73,7 @@ interface AppContextType {
   bulkAutoMatchProducts: (productIds: string[]) => Promise<number>;
   autoMatchProductByTitle: (productId: string) => Promise<CompetitorProductMatch[]>;
   autoMatchAllProducts: () => Promise<number>;
+  triggerSingleProductCompetitorSearch: (productId: string) => Promise<void>;
   
   confirmMatch: (matchId: string) => void;
   rejectMatch: (matchId: string) => void;
@@ -161,7 +162,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...p,
             matchesCount: 0,
             marketPosition: 'unmatched',
-            matchingStatus: 'unmatched',
+            matchingStatus: p.isSearchingCompetitors ? 'searching' : 'unmatched',
             lowestCompetitorPrice: undefined,
             averageCompetitorPrice: undefined,
           };
@@ -183,6 +184,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         return {
           ...p,
+          isSearchingCompetitors: false,
           matchesCount: prodMatches.length,
           marketPosition: pos,
           matchingStatus: matchStatus,
@@ -318,7 +320,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString().split('T')[0],
       matchesCount: 0,
       marketPosition: 'unmatched',
-      matchingStatus: 'unmatched',
+      matchingStatus: 'searching',
+      isSearchingCompetitors: true,
     };
 
     setProducts((prev) => [optimisticProduct, ...prev]);
@@ -331,13 +334,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const json = await res.json();
       if (json.success && json.product) {
-        setProducts((prev) => prev.map((p) => (p.id === tempId ? json.product : p)));
-        return json.product;
+        const saved: Product = {
+          ...json.product,
+          matchingStatus: 'searching',
+          isSearchingCompetitors: true,
+        };
+        setProducts((prev) => prev.map((p) => (p.id === tempId ? saved : p)));
+
+        // Automatically start real-time competitor discovery in background
+        triggerSingleProductCompetitorSearch(saved.id);
+        return saved;
       }
     } catch (err) {
       console.error('Failed to save product to backend:', err);
     }
 
+    triggerSingleProductCompetitorSearch(tempId);
     return optimisticProduct;
   };
 
@@ -417,8 +429,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json();
       if (data.success && data.importedProducts) {
-        setProducts((prev) => [...data.importedProducts, ...prev]);
-        return { count: data.count, importedProducts: data.importedProducts };
+        const prodsWithSearching: Product[] = data.importedProducts.map((p: Product) => ({
+          ...p,
+          matchingStatus: 'searching' as const,
+          isSearchingCompetitors: true,
+        }));
+        setProducts((prev) => [...prodsWithSearching, ...prev]);
+
+        // Automatically trigger competitor searches for each imported SKU with gentle pacing
+        prodsWithSearching.forEach((p, idx) => {
+          setTimeout(() => {
+            triggerSingleProductCompetitorSearch(p.id);
+          }, idx * 350);
+        });
+
+        return { count: data.count, importedProducts: prodsWithSearching };
       }
     } catch (err) {
       console.error('Backend CSV import failed, falling back to local:', err);
@@ -443,10 +468,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString().split('T')[0],
       matchesCount: 0,
       marketPosition: 'unmatched',
-      matchingStatus: 'unmatched',
+      matchingStatus: 'searching' as const,
+      isSearchingCompetitors: true,
     }));
 
     setProducts((prev) => [...fallbackProducts, ...prev]);
+    fallbackProducts.forEach((p, idx) => {
+      setTimeout(() => {
+        triggerSingleProductCompetitorSearch(p.id);
+      }, idx * 350);
+    });
+
     return { count: fallbackProducts.length, importedProducts: fallbackProducts };
   };
 
@@ -630,7 +662,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const updatedMatches = [...otherMatches, ...newConfirmedMatches];
     setMatches(updatedMatches);
-    setProducts((prev) => recalculateProductPositions(prev, updatedMatches));
+    setProducts((prev) =>
+      recalculateProductPositions(
+        prev.map((p) => (p.id === productId ? { ...p, isSearchingCompetitors: false } : p)),
+        updatedMatches
+      )
+    );
 
     // 2. Persist to backend database
     try {
@@ -650,6 +687,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (err) {
       console.error('Failed to save matches to backend:', err);
+    }
+  };
+
+  // Automatic Background Competitor Search for single SKU
+  const triggerSingleProductCompetitorSearch = async (productId: string) => {
+    try {
+      const groups = await generateCompetitorCandidates(productId);
+      if (groups && groups.length > 0) {
+        await saveSelectedCandidateMatches(productId, groups);
+      } else {
+        setProducts((prev) =>
+          prev.map((p) =>
+            p.id === productId
+              ? { ...p, isSearchingCompetitors: false, matchingStatus: 'unmatched' }
+              : p
+          )
+        );
+      }
+    } catch (err) {
+      console.warn('Competitor auto-search failed for product:', err);
+      setProducts((prev) =>
+        prev.map((p) =>
+          p.id === productId
+            ? { ...p, isSearchingCompetitors: false, matchingStatus: 'unmatched' }
+            : p
+        )
+      );
     }
   };
 
@@ -1152,6 +1216,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         bulkAutoMatchProducts,
         autoMatchProductByTitle,
         autoMatchAllProducts,
+        triggerSingleProductCompetitorSearch,
         confirmMatch,
         rejectMatch,
         addManualMatch,

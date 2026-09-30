@@ -65,7 +65,8 @@ export interface Product {
   marketPosition: 'cheapest' | 'competitive' | 'expensive' | 'unmatched';
   lowestCompetitorPrice?: number;
   averageCompetitorPrice?: number;
-  matchingStatus?: 'fully_matched' | 'partially_matched' | 'unmatched';
+  matchingStatus?: 'fully_matched' | 'partially_matched' | 'unmatched' | 'searching';
+  isSearchingCompetitors?: boolean;
 }
 
 export type ChannelType = 'marketplace' | 'brand_official';

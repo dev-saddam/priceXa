@@ -125,7 +125,8 @@ export async function addProduct(
     createdAt: new Date().toISOString().split('T')[0],
     matchesCount: 0,
     marketPosition: 'unmatched',
-    matchingStatus: 'unmatched',
+    matchingStatus: 'searching',
+    isSearchingCompetitors: true,
   };
 
   db.products.unshift(newProduct);
@@ -230,7 +231,8 @@ export async function bulkImportProducts(
       createdAt: new Date().toISOString().split('T')[0],
       matchesCount: 0,
       marketPosition: 'unmatched',
-      matchingStatus: 'unmatched',
+      matchingStatus: 'searching',
+      isSearchingCompetitors: true,
     };
   });
 
@@ -409,12 +411,15 @@ export async function recalculateMarketPositions(tenantId: string): Promise<void
 
     if (prodMatches.length === 0) {
       product.marketPosition = 'unmatched';
-      product.matchingStatus = 'unmatched';
+      if (!product.isSearchingCompetitors) {
+        product.matchingStatus = 'unmatched';
+      }
       product.lowestCompetitorPrice = undefined;
       product.averageCompetitorPrice = undefined;
       return;
     }
 
+    product.isSearchingCompetitors = false;
     product.matchingStatus =
       prodMatches.length >= totalActiveCompetitors ? 'fully_matched' : 'partially_matched';
 

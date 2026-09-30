@@ -25,6 +25,7 @@ import {
   AlertTriangle,
   ArrowUpRight,
   ArrowDownRight,
+  Loader2,
 } from 'lucide-react';
 
 interface ProductsViewProps {
@@ -626,7 +627,12 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
                       {/* Lowest Competitor */}
                       <td className="p-3">
-                        {lowestComp ? (
+                        {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                          <div className="flex items-center gap-1.5 text-blue-400 py-1">
+                            <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+                            <span className="text-[11px] font-medium animate-pulse">Scanning stores...</span>
+                          </div>
+                        ) : lowestComp ? (
                           <div>
                             <span className="font-bold text-slate-200">
                               {currentTenant.currencySymbol}
@@ -643,52 +649,111 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
                       {/* Market Position */}
                       <td className="p-3">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                            product.marketPosition === 'cheapest'
-                              ? 'badge-clean-emerald'
-                              : product.marketPosition === 'expensive'
-                              ? 'badge-clean-rose'
-                              : product.marketPosition === 'competitive'
-                              ? 'badge-clean-blue'
-                              : 'bg-slate-800 text-slate-400 border border-slate-700/60'
-                          }`}
-                        >
-                          {product.marketPosition === 'expensive' ? 'Under-Cut' : product.marketPosition}
-                        </span>
+                        {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-300 border border-blue-500/30 flex items-center gap-1.5 w-fit animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
+                            <span>Searching</span>
+                          </span>
+                        ) : (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              product.marketPosition === 'cheapest'
+                                ? 'badge-clean-emerald'
+                                : product.marketPosition === 'expensive'
+                                ? 'badge-clean-rose'
+                                : product.marketPosition === 'competitive'
+                                ? 'badge-clean-blue'
+                                : 'bg-slate-800 text-slate-400 border border-slate-700/60'
+                            }`}
+                          >
+                            {product.marketPosition === 'expensive' ? 'Under-Cut' : product.marketPosition}
+                          </span>
+                        )}
                       </td>
 
                       {/* Monitored Competitors Count with URL Matcher trigger */}
                       <td className="p-3">
-                        <button
-                          onClick={() => onOpenCandidateMatcher(product)}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer ${
-                            prodMatches.length >= 3
-                              ? 'badge-clean-emerald'
-                              : prodMatches.length > 0
-                              ? 'badge-clean-purple'
-                              : 'bg-slate-800/80 text-amber-300 border border-amber-500/30 hover:border-amber-500'
-                          }`}
-                          title="Click to review candidate URLs and select which to monitor"
-                        >
-                          <Crosshair className="w-3 h-3" />
-                          <span>
-                            {prodMatches.length > 0 ? `${prodMatches.length} Stores Monitored` : 'Select URLs →'}
-                          </span>
-                        </button>
+                        {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                          <div className="flex items-center gap-2 p-2 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-300 animate-pulse max-w-[220px]">
+                            <Loader2 className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-semibold block text-[11px] text-blue-200 leading-tight">
+                                Searching in background...
+                              </span>
+                              <span className="text-[10px] text-blue-400/80 truncate block">
+                                Scanning Google & stores
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            <button
+                              onClick={() => onOpenCandidateMatcher(product)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer shadow-sm ${
+                                prodMatches.length >= 3
+                                  ? 'badge-clean-emerald hover:opacity-90'
+                                  : prodMatches.length > 0
+                                  ? 'badge-clean-purple hover:opacity-90'
+                                  : 'bg-slate-800/80 text-amber-300 border border-amber-500/30 hover:border-amber-500'
+                              }`}
+                              title="Click to review candidate URLs and select which to monitor"
+                            >
+                              {prodMatches.length > 0 ? (
+                                <>
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
+                                  <span>{prodMatches.length} Competitors Found</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Crosshair className="w-3 h-3" />
+                                  <span>0 Found · Match Manually →</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Show searched competitors and their prices */}
+                            {prodMatches.length > 0 && (
+                              <div className="flex items-center gap-1 flex-wrap">
+                                {prodMatches.map((m) => (
+                                  <span
+                                    key={m.id}
+                                    className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-white/[0.08] flex items-center gap-1 font-medium hover:border-white/20 transition-colors"
+                                    title={`${m.competitorName}: ${currentTenant.currencySymbol}${m.currentPrice.toFixed(2)}`}
+                                  >
+                                    <span>{m.platform === 'amazon' ? '🛒' : m.channelType === 'brand_official' ? '🏷️' : '🛍️'}</span>
+                                    <span className="truncate max-w-[75px]">{m.competitorName}</span>
+                                    <span className="text-[9px] text-emerald-400 font-mono font-semibold">
+                                      {currentTenant.currencySymbol}{m.currentPrice.toFixed(0)}
+                                    </span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Actions */}
                       <td className="p-3 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => onOpenCandidateMatcher(product)}
-                            className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/25 transition-colors cursor-pointer flex items-center gap-1"
-                            title="Find & Select Competitor URLs by Title"
-                          >
-                            <Sparkles className="w-3 h-3" />
-                            Match URLs
-                          </button>
+                          {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                            <button
+                              disabled
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 opacity-80 cursor-wait flex items-center gap-1.5"
+                            >
+                              <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                              <span>Searching...</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => onOpenCandidateMatcher(product)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/25 transition-colors cursor-pointer flex items-center gap-1"
+                              title="Find & Select Competitor URLs by Title"
+                            >
+                              <Sparkles className="w-3 h-3" />
+                              <span>Match URLs</span>
+                            </button>
+                          )}
                           <button
                             onClick={() => deleteProduct(product.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
