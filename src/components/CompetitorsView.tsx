@@ -226,8 +226,8 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({
                               {originalProduct?.name || 'Catalog Item'}
                             </p>
                             <span className="text-[10px] font-mono text-slate-400">
-                              {originalProduct?.code} • {currentTenant.currencySymbol}
-                              {originalProduct?.currentPrice.toFixed(2)}
+                              {originalProduct?.code || 'SKU'} • {currentTenant.currencySymbol}
+                              {originalProduct ? originalProduct.currentPrice.toFixed(2) : '0.00'}
                             </span>
                           </div>
                         </td>

@@ -44,6 +44,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     matches,
     deleteProduct,
     bulkDeleteProducts,
+    clearAllProducts,
     updateProduct,
     generateLargeDemoCatalog,
     bulkAutoMatchProducts,
@@ -246,6 +247,21 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             <Plus className="w-3.5 h-3.5" />
             Add Product
           </button>
+
+          {tenantProducts.length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to remove all product data?')) {
+                  clearAllProducts();
+                }
+              }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/25 text-xs font-semibold transition-colors cursor-pointer"
+              title="Remove all products from this catalog"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+              Clear All
+            </button>
+          )}
         </div>
       </div>
 
@@ -461,8 +477,52 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
             <tbody className="divide-y divide-white/[0.04] text-slate-300">
               {paginatedProducts.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-12 text-center text-slate-400">
-                    No products matched your criteria.
+                  <td colSpan={9} className="p-16 text-center text-slate-400">
+                    <div className="max-w-md mx-auto space-y-4">
+                      <div className="w-14 h-14 rounded-2xl bg-blue-500/10 text-blue-400 flex items-center justify-center mx-auto border border-blue-500/20 shadow-inner">
+                        <Package className="w-7 h-7" />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-slate-200">
+                          {tenantProducts.length === 0 ? 'Catalog is Empty' : 'No Matching Products'}
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-1">
+                          {tenantProducts.length === 0
+                            ? 'All product data has been removed. Upload your product catalog via CSV or add single SKUs to start monitoring competitor prices.'
+                            : 'No products matched your search or filters.'}
+                        </p>
+                      </div>
+                      {tenantProducts.length === 0 ? (
+                        <div className="flex items-center justify-center gap-3 pt-2">
+                          <button
+                            onClick={onOpenCsvModal}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition-colors cursor-pointer shadow-md"
+                          >
+                            <FileSpreadsheet className="w-4 h-4" />
+                            Import CSV
+                          </button>
+                          <button
+                            onClick={onOpenAddModal}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-white/[0.08] transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add SKU Manually
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSearchQuery('');
+                            setCategoryFilter('all');
+                            setPositionFilter('all');
+                            setMatchingStatusFilter('all');
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-slate-800 text-xs text-slate-300 hover:bg-slate-700 border border-white/[0.08] cursor-pointer"
+                        >
+                          Clear Filters
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ) : (

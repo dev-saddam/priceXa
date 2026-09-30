@@ -162,6 +162,32 @@ export async function deleteProduct(id: string): Promise<boolean> {
   return true;
 }
 
+export async function clearAllProducts(tenantId?: string): Promise<{ deletedCount: number }> {
+  const db = await getDb();
+  let deletedCount = 0;
+  if (tenantId) {
+    const idsToDelete = new Set(db.products.filter((p) => p.tenantId === tenantId).map((p) => p.id));
+    deletedCount = idsToDelete.size;
+    db.products = db.products.filter((p) => p.tenantId !== tenantId);
+    db.matches = db.matches.filter((m) => !idsToDelete.has(m.productId));
+    db.notifications = db.notifications.filter((n) => !n.productId || !idsToDelete.has(n.productId));
+    await saveDb(db);
+    await recalculateMarketPositions(tenantId);
+  } else {
+    deletedCount = db.products.length;
+    db.products = [];
+    db.matches = [];
+    db.notifications = db.notifications.filter((n) => n.productId === 'system');
+    db.scanJobs = [];
+    db.competitors.forEach((c) => {
+      c.monitoredProductsCount = 0;
+      c.avgPriceDiffPercent = 0;
+    });
+    await saveDb(db);
+  }
+  return { deletedCount };
+}
+
 export async function bulkImportProducts(
   tenantId: string,
   rows: Array<{

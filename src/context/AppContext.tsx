@@ -60,6 +60,7 @@ interface AppContextType {
   updateProduct: (id: string, updates: Partial<Product>) => Promise<void>;
   deleteProduct: (id: string) => Promise<void>;
   bulkDeleteProducts: (ids: string[]) => Promise<void>;
+  clearAllProducts: () => Promise<void>;
   importProductsFromCsv: (csvRows: Array<{ name: string; brand?: string; code: string; mrp: number; currentPrice?: number; costPrice?: number; category?: string; productUrl?: string }>) => Promise<{ count: number; importedProducts: Product[] }>;
   generateLargeDemoCatalog: (count?: number) => void;
   addCompetitor: (competitor: Omit<Competitor, 'id' | 'tenantId' | 'monitoredProductsCount' | 'avgPriceDiffPercent' | 'lastScrapedAt'>) => Promise<Competitor>;
@@ -185,19 +186,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetch('/api/tenants').then((r) => r.json()).catch(() => null),
       ]);
 
-      if (prodRes?.success && Array.isArray(prodRes.products) && prodRes.products.length > 0) {
+      if (prodRes?.success && Array.isArray(prodRes.products)) {
         setProducts(prodRes.products);
       }
-      if (compRes?.success && Array.isArray(compRes.competitors) && compRes.competitors.length > 0) {
+      if (compRes?.success && Array.isArray(compRes.competitors)) {
         setCompetitors(compRes.competitors);
       }
-      if (matchRes?.success && Array.isArray(matchRes.matches) && matchRes.matches.length > 0) {
+      if (matchRes?.success && Array.isArray(matchRes.matches)) {
         setMatches(matchRes.matches);
       }
       if (alertRes?.success && Array.isArray(alertRes.notifications)) {
         setNotifications(alertRes.notifications);
       }
-      if (scanRes?.success && Array.isArray(scanRes.scans) && scanRes.scans.length > 0) {
+      if (scanRes?.success && Array.isArray(scanRes.scans)) {
         setScanJobs(scanRes.scans);
       }
       if (tenantRes?.success && Array.isArray(tenantRes.tenants) && tenantRes.tenants.length > 0) {
@@ -341,6 +342,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setMatches((prev) => prev.filter((m) => !idSet.has(m.productId)));
 
     await Promise.allSettled(ids.map((id) => fetch(`/api/products/${id}`, { method: 'DELETE' })));
+  };
+
+  const clearAllProducts = async () => {
+    setProducts([]);
+    setMatches([]);
+    setNotifications([]);
+    setCompetitors((prev) =>
+      prev.map((c) => ({ ...c, monitoredProductsCount: 0, avgPriceDiffPercent: 0 }))
+    );
+
+    try {
+      await fetch('/api/products?all=true', { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed clearing products on backend:', err);
+    }
   };
 
   // 4. Bulk CSV Import with Backend API
@@ -977,6 +993,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProduct,
         deleteProduct,
         bulkDeleteProducts,
+        clearAllProducts,
         importProductsFromCsv,
         generateLargeDemoCatalog,
         addCompetitor,

@@ -170,15 +170,15 @@ export const AutoMatchModal: React.FC<AutoMatchModalProps> = ({
             </label>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-bold text-slate-100">{currentProduct?.name}</h3>
+                <h3 className="text-sm font-bold text-slate-100">{currentProduct?.name || 'No Product in Catalog'}</h3>
                 <div className="flex items-center gap-3 text-xs text-slate-400 mt-0.5">
-                  <span className="font-mono text-slate-300">SKU: {currentProduct?.code}</span>
+                  <span className="font-mono text-slate-300">SKU: {currentProduct?.code || 'None'}</span>
                   <span>•</span>
                   <span>
                     Your Rate:{' '}
                     <strong className="text-slate-100">
                       {currentTenant.currencySymbol}
-                      {currentProduct?.currentPrice.toFixed(2)}
+                      {currentProduct ? currentProduct.currentPrice.toFixed(2) : '0.00'}
                     </strong>
                   </span>
                   <span>•</span>
@@ -186,13 +186,13 @@ export const AutoMatchModal: React.FC<AutoMatchModalProps> = ({
                     MRP:{' '}
                     <span className="text-slate-400">
                       {currentTenant.currencySymbol}
-                      {currentProduct?.mrp.toFixed(2)}
+                      {currentProduct ? currentProduct.mrp.toFixed(2) : '0.00'}
                     </span>
                   </span>
                 </div>
               </div>
 
-              {!targetProduct && (
+              {!targetProduct && products.length > 0 && (
                 <select
                   value={selectedProductId}
                   onChange={(e) => {
