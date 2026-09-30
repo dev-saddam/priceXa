@@ -175,9 +175,20 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
                     <div className="flex items-center gap-2.5">
                       <span className="text-xl">{group.competitorLogo}</span>
                       <div>
-                        <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-tight">
-                          {group.competitorName}
-                        </h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-bold text-xs sm:text-sm text-slate-100 leading-tight">
+                            {group.competitorName}
+                          </h4>
+                          <span
+                            className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                              group.channelType === 'brand_official'
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                                : 'bg-blue-500/10 text-blue-300 border-blue-500/25'
+                            }`}
+                          >
+                            {group.channelType === 'brand_official' ? '🏷️ Brand Official Webstore' : '🛒 Marketplace Channel'}
+                          </span>
+                        </div>
                         <span className="text-[11px] text-slate-400 font-mono">{group.competitorDomain}</span>
                       </div>
                     </div>
@@ -242,6 +253,15 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
                                 >
                                   {cand.matchPercent}% Title Match
                                 </span>
+                                {cand.channelType === 'brand_official' ? (
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                    <ShieldCheck className="w-2.5 h-2.5" /> Official Brand
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30">
+                                    Marketplace
+                                  </span>
+                                )}
                                 {cand.isRecommended && (
                                   <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-purple-500/15 text-purple-300 border border-purple-500/30">
                                     Recommended
@@ -249,8 +269,13 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
                                 )}
                               </div>
 
-                              <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                              <div className="flex items-center gap-3 text-[11px] text-slate-400 flex-wrap">
                                 <span className="font-mono truncate max-w-xs">{cand.url}</span>
+                                {cand.sellerName && (
+                                  <span className="text-slate-400">
+                                    Sold by: <strong className="text-slate-300">{cand.sellerName}</strong>
+                                  </span>
+                                )}
                                 <a
                                   href={cand.url}
                                   target="_blank"
@@ -265,20 +290,35 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
                           </div>
 
                           {/* Price & Stock info */}
-                          <div className="text-right shrink-0 pl-7 sm:pl-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2">
-                            <span className="text-sm font-black text-slate-100">
-                              {currentTenant.currencySymbol}
-                              {cand.price.toFixed(2)}
-                            </span>
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold ${
-                                cand.stockStatus === 'in_stock'
-                                  ? 'badge-clean-emerald'
-                                  : 'badge-clean-rose'
-                              }`}
-                            >
-                              {cand.stockStatus === 'in_stock' ? 'In Stock' : 'Out of Stock'}
-                            </span>
+                          <div className="text-right shrink-0 pl-7 sm:pl-0 flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5">
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="text-sm font-black text-slate-100">
+                                {currentTenant.currencySymbol}
+                                {cand.price.toFixed(2)}
+                              </span>
+                              {cand.regularPrice && cand.regularPrice > cand.price && (
+                                <span className="line-through text-slate-500 text-xs">
+                                  {currentTenant.currencySymbol}
+                                  {cand.regularPrice.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              {cand.discountPercent && cand.discountPercent > 0 && (
+                                <span className="text-[10px] font-bold text-rose-400 bg-rose-500/10 px-1.5 py-0.2 rounded border border-rose-500/20">
+                                  {cand.discountPercent}% OFF
+                                </span>
+                              )}
+                              <span
+                                className={`inline-flex items-center gap-1 px-2 py-0.2 rounded-full text-[10px] font-bold ${
+                                  cand.stockStatus === 'in_stock'
+                                    ? 'badge-clean-emerald'
+                                    : 'badge-clean-rose'
+                                }`}
+                              >
+                                {cand.stockStatus === 'in_stock' ? 'In Stock' : 'Out of Stock'}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       );

@@ -59,6 +59,20 @@ export interface Product {
   matchingStatus?: 'fully_matched' | 'partially_matched' | 'unmatched';
 }
 
+export type ChannelType = 'marketplace' | 'brand_official';
+export type StorePlatform =
+  | 'amazon'
+  | 'walmart'
+  | 'bestbuy'
+  | 'target'
+  | 'ebay'
+  | 'flipkart'
+  | 'shopify'
+  | 'woocommerce'
+  | 'magento'
+  | 'bigcommerce'
+  | 'custom_brand';
+
 export interface Competitor {
   id: string;
   tenantId: string;
@@ -71,6 +85,8 @@ export interface Competitor {
   searchSelector?: string;
   avgPriceDiffPercent: number;
   lastScrapedAt: string;
+  channelType?: ChannelType;
+  platform?: StorePlatform;
 }
 
 export interface PricePoint {
@@ -91,6 +107,7 @@ export interface CompetitorProductMatch {
   matchType: 'title_search' | 'sku_exact' | 'manual_override';
   currentPrice: number;
   previousPrice: number;
+  regularPrice?: number;
   priceDiff: number; // competitorPrice - myPrice
   priceDiffPercent: number;
   stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
@@ -98,6 +115,9 @@ export interface CompetitorProductMatch {
   lastScrapedAt: string;
   priceHistory: PricePoint[];
   status: 'confirmed' | 'pending_review' | 'rejected';
+  channelType?: ChannelType;
+  platform?: StorePlatform;
+  sellerName?: string;
 }
 
 export interface CandidateMatchOption {
@@ -110,8 +130,13 @@ export interface CandidateMatchOption {
   url: string;
   matchPercent: number; // e.g. 98, 92, 85
   price: number;
+  regularPrice?: number;
+  discountPercent?: number;
   currency: string;
   stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock';
+  channelType?: ChannelType;
+  platform?: StorePlatform;
+  sellerName?: string;
   isRecommended?: boolean;
 }
 
@@ -120,6 +145,8 @@ export interface CompetitorCandidateGroup {
   competitorName: string;
   competitorDomain: string;
   competitorLogo: string;
+  channelType?: ChannelType;
+  platform?: StorePlatform;
   selectedCandidateId: string | null; // id of CandidateMatchOption or 'custom' or null
   customUrl?: string;
   candidates: CandidateMatchOption[];

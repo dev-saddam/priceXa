@@ -568,6 +568,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastScrapedAt: 'Just now',
         priceHistory: [{ timestamp: 'Today', price: chosenPrice, stockStatus: chosenStock }],
         status: 'confirmed',
+        channelType: chosenCandidate?.channelType || group.channelType,
+        platform: chosenCandidate?.platform || group.platform,
+        regularPrice: chosenCandidate?.regularPrice,
+        sellerName: chosenCandidate?.sellerName,
       });
     }
 

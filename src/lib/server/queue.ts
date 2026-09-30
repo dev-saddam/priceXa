@@ -270,6 +270,7 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
           matchType: 'title_search',
           currentPrice: topCand.price,
           previousPrice: topCand.price,
+          regularPrice: topCand.regularPrice,
           priceDiff: diff,
           priceDiffPercent: diffPercent,
           stockStatus: topCand.stockStatus,
@@ -277,6 +278,9 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
           lastScrapedAt: 'Just now',
           priceHistory: [{ timestamp: 'Today', price: topCand.price, stockStatus: topCand.stockStatus }],
           status: 'confirmed',
+          channelType: topCand.channelType || group.channelType,
+          platform: topCand.platform || group.platform,
+          sellerName: topCand.sellerName,
         });
       }
       await sleep(150);
@@ -401,6 +405,11 @@ async function handleDailyScanJob(job: BackgroundJob) {
           stockChangesFound++;
           match.stockStatus = scrapeResult.stockStatus;
         }
+
+        if (scrapeResult.regularPrice) match.regularPrice = scrapeResult.regularPrice;
+        if (scrapeResult.sellerName) match.sellerName = scrapeResult.sellerName;
+        if (scrapeResult.channelType) match.channelType = scrapeResult.channelType;
+        if (scrapeResult.platform) match.platform = scrapeResult.platform;
 
         match.lastScrapedAt = 'Just now';
       } catch (err: any) {

@@ -34,6 +34,10 @@ export async function POST(req: Request) {
       let stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock' = 'in_stock';
       let confidence = 85;
 
+      const candidate = group.selectedCandidateId !== 'custom' 
+        ? group.candidates.find((c) => c.id === group.selectedCandidateId)
+        : null;
+
       if (group.selectedCandidateId === 'custom') {
         if (!group.customUrl) continue;
         url = group.customUrl;
@@ -41,7 +45,6 @@ export async function POST(req: Request) {
         price = product.currentPrice;
         confidence = 100;
       } else {
-        const candidate = group.candidates.find((c) => c.id === group.selectedCandidateId);
         if (!candidate) continue;
         title = candidate.title;
         url = candidate.url;
@@ -65,6 +68,7 @@ export async function POST(req: Request) {
         matchType: group.selectedCandidateId === 'custom' ? 'manual_override' : 'title_search',
         currentPrice: price,
         previousPrice: price,
+        regularPrice: candidate?.regularPrice,
         priceDiff,
         priceDiffPercent,
         stockStatus,
@@ -78,6 +82,9 @@ export async function POST(req: Request) {
           },
         ],
         status: 'confirmed',
+        channelType: candidate?.channelType || group.channelType,
+        platform: candidate?.platform || group.platform,
+        sellerName: candidate?.sellerName,
       });
     }
 

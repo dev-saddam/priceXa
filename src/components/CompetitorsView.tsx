@@ -107,7 +107,23 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({
                     <h3 className="font-bold text-slate-100 text-xs sm:text-sm leading-tight">
                       {comp.name}
                     </h3>
-                    <span className="text-[11px] text-slate-400 font-mono">{comp.domain}</span>
+                    <span className="text-[11px] text-slate-400 font-mono block">{comp.domain}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                      <span
+                        className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border ${
+                          comp.channelType === 'brand_official'
+                            ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                            : 'bg-blue-500/10 text-blue-300 border-blue-500/25'
+                        }`}
+                      >
+                        {comp.channelType === 'brand_official' ? '🏷️ Brand D2C' : '🛒 Marketplace'}
+                      </span>
+                      {comp.platform && (
+                        <span className="text-[9px] font-mono uppercase px-1 py-0.5 rounded bg-slate-800/80 text-slate-400 border border-white/[0.06]">
+                          {comp.platform}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -218,19 +234,35 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({
 
                         {/* Competitor Listing */}
                         <td className="p-4">
-                          <div className="max-w-[260px] space-y-0.5">
-                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide block">
-                              {m.competitorName}
-                            </span>
+                          <div className="max-w-[260px] space-y-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wide">
+                                {m.competitorName}
+                              </span>
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md border ${
+                                  m.channelType === 'brand_official'
+                                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/25'
+                                    : 'bg-blue-500/10 text-blue-300 border-blue-500/25'
+                                }`}
+                              >
+                                {m.channelType === 'brand_official' ? '🏷️ Brand D2C' : '🛒 Marketplace'}
+                              </span>
+                            </div>
                             <a
                               href={m.competitorProductUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="text-slate-200 hover:text-blue-300 font-medium truncate flex items-center gap-1 group"
+                              className="text-slate-200 hover:text-blue-300 font-medium truncate flex items-center gap-1 group text-xs"
                             >
                               <span className="truncate">{m.competitorProductTitle}</span>
                               <ExternalLink className="w-3 h-3 text-slate-500 group-hover:text-blue-400 shrink-0" />
                             </a>
+                            {m.sellerName && (
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                Seller: <span className="text-slate-300">{m.sellerName}</span>
+                              </span>
+                            )}
                           </div>
                         </td>
 
@@ -244,10 +276,18 @@ export const CompetitorsView: React.FC<CompetitorsViewProps> = ({
                         {/* Competitor Price & Delta */}
                         <td className="p-4">
                           <div>
-                            <span className="font-black text-slate-100 text-sm">
-                              {currentTenant.currencySymbol}
-                              {m.currentPrice.toFixed(2)}
-                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-black text-slate-100 text-sm">
+                                {currentTenant.currencySymbol}
+                                {m.currentPrice.toFixed(2)}
+                              </span>
+                              {m.regularPrice && m.regularPrice > m.currentPrice && (
+                                <span className="line-through text-slate-500 text-[11px]">
+                                  {currentTenant.currencySymbol}
+                                  {m.regularPrice.toFixed(2)}
+                                </span>
+                              )}
+                            </div>
                             <span
                               className={`block text-[10px] font-semibold ${
                                 m.priceDiff < 0
