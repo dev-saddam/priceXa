@@ -9,10 +9,7 @@ import {
   ChevronDown,
   Plus,
   Radio,
-  Sparkles,
-  Cpu,
 } from 'lucide-react';
-import { BackgroundJobsDrawer } from './BackgroundJobsDrawer';
 
 interface HeaderProps {
   onOpenNotifications: () => void;
@@ -34,13 +31,9 @@ export const Header: React.FC<HeaderProps> = ({
     notifications,
     isScanning,
     setActiveTab,
-    backendConnected,
-    activeBackgroundJob,
-    queueMetrics,
   } = useApp();
 
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
-  const [jobsDrawerOpen, setJobsDrawerOpen] = useState(false);
 
   const unreadCount = notifications.filter(
     (n) => n.tenantId === currentTenant.id && !n.read
@@ -155,40 +148,6 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        {/* Live Backend Indicator Badge */}
-        {!isSuperAdmin && (
-          <div className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/60 border border-white/[0.08] text-xs">
-            <span className={`w-2 h-2 rounded-full ${backendConnected ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-            <span className="text-slate-400">
-              Backend: <span className="text-emerald-400 font-semibold">Active & Live</span>
-            </span>
-          </div>
-        )}
-
-        {/* Background Worker Queue Button */}
-        {!isSuperAdmin && (
-          <button
-            onClick={() => setJobsDrawerOpen(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all cursor-pointer ${
-              activeBackgroundJob
-                ? 'bg-blue-500/15 border border-blue-500/30 text-blue-300 animate-pulse'
-                : 'bg-slate-900/60 border border-white/[0.08] text-slate-300 hover:border-white/20'
-            }`}
-            title="Click to view background worker pool & queue"
-          >
-            <Cpu className={`w-3.5 h-3.5 ${activeBackgroundJob ? 'text-blue-400 animate-spin' : 'text-emerald-400'}`} />
-            {activeBackgroundJob ? (
-              <span className="font-semibold text-blue-300">
-                Crawler: {activeBackgroundJob.progress}%
-              </span>
-            ) : (
-              <span className="hidden sm:inline text-slate-300">
-                Workers: <strong className="text-emerald-400 font-semibold">{queueMetrics.activeWorkers}/{queueMetrics.maxConcurrency}</strong>
-              </span>
-            )}
-          </button>
-        )}
-
         {/* Live Instant Scan Button */}
         {!isSuperAdmin && (
           <button
@@ -232,12 +191,6 @@ export const Header: React.FC<HeaderProps> = ({
           <span className="hidden md:inline">{isSuperAdmin ? 'Exit Admin' : 'Super Admin'}</span>
         </button>
       </div>
-
-      {/* Background Jobs Drawer */}
-      <BackgroundJobsDrawer
-        isOpen={jobsDrawerOpen}
-        onClose={() => setJobsDrawerOpen(false)}
-      />
     </header>
   );
 };
