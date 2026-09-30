@@ -81,6 +81,7 @@ export type StorePlatform =
   | 'woocommerce'
   | 'magento'
   | 'bigcommerce'
+  | 'demandware'
   | 'custom_brand';
 
 export interface Competitor {
