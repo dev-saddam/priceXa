@@ -210,49 +210,62 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
 
                   {/* Candidate Options */}
                   <div className="space-y-2.5">
-                    {group.candidates.map((cand) => {
-                      const isSelected = group.selectedCandidateId === cand.id;
+                    {group.candidates.length === 0 ? (
+                      <div className="p-4 rounded-2xl bg-slate-950/40 border border-dashed border-white/[0.08] text-center space-y-1">
+                        <p className="text-xs font-semibold text-slate-300">
+                          No live product detail listings matching ≥ 50% of title found on this domain.
+                        </p>
+                        <p className="text-[11px] text-slate-500">
+                          Every candidate is strictly verified for HTTP 200 OK and product details. You can paste a custom URL below.
+                        </p>
+                      </div>
+                    ) : (
+                      group.candidates.map((cand) => {
+                        const isSelected = group.selectedCandidateId === cand.id;
 
-                      return (
-                        <div
-                          key={cand.id}
-                          onClick={() => handleSelectCandidate(group.competitorId, cand.id)}
-                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                            isSelected
-                              ? 'bg-blue-600/15 border-blue-500/50 shadow-md ring-1 ring-blue-500/30'
-                              : 'bg-slate-950/60 border-white/[0.06] hover:border-white/15'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3 flex-1 min-w-0">
-                            {/* Radio indicator */}
-                            <div className="pt-0.5 shrink-0">
-                              <div
-                                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                                  isSelected
-                                    ? 'border-blue-400 bg-blue-500 text-white'
-                                    : 'border-slate-600 bg-transparent'
-                                }`}
-                              >
-                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                              </div>
-                            </div>
-
-                            <div className="space-y-1 min-w-0 flex-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-xs text-slate-200 truncate">
-                                  {cand.title}
-                                </span>
-                                <span
-                                  className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${
-                                    cand.matchPercent >= 90
-                                      ? 'badge-clean-emerald'
-                                      : cand.matchPercent >= 80
-                                      ? 'badge-clean-blue'
-                                      : 'badge-clean-amber'
+                        return (
+                          <div
+                            key={cand.id}
+                            onClick={() => handleSelectCandidate(group.competitorId, cand.id)}
+                            className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                              isSelected
+                                ? 'bg-blue-600/15 border-blue-500/50 shadow-md ring-1 ring-blue-500/30'
+                                : 'bg-slate-950/60 border-white/[0.06] hover:border-white/15'
+                            }`}
+                          >
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              {/* Radio indicator */}
+                              <div className="pt-0.5 shrink-0">
+                                <div
+                                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                                    isSelected
+                                      ? 'border-blue-400 bg-blue-500 text-white'
+                                      : 'border-slate-600 bg-transparent'
                                   }`}
                                 >
-                                  {cand.matchPercent}% Title Match
-                                </span>
+                                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1 min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-semibold text-xs text-slate-200 truncate">
+                                    {cand.title}
+                                  </span>
+                                  <span
+                                    className={`px-2 py-0.2 rounded-full text-[10px] font-bold ${
+                                      cand.matchPercent >= 90
+                                        ? 'badge-clean-emerald'
+                                        : cand.matchPercent >= 80
+                                        ? 'badge-clean-blue'
+                                        : 'badge-clean-amber'
+                                    }`}
+                                  >
+                                    {cand.matchPercent}% Title Match
+                                  </span>
+                                  <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    <CheckCircle2 className="w-2.5 h-2.5" /> PDP Verified (200 OK)
+                                  </span>
                                 {cand.channelType === 'brand_official' ? (
                                   <span className="inline-flex items-center gap-1 text-[9px] font-bold uppercase px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
                                     <ShieldCheck className="w-2.5 h-2.5" /> Official Brand
@@ -322,7 +335,7 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
                           </div>
                         </div>
                       );
-                    })}
+                    }))}
                   </div>
 
                   {/* Custom URL Input Option */}

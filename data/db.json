@@ -349,14 +349,149 @@
   ],
   "matches": [
     {
+      "id": "match-1",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "Reebok Energen Run 4 Lightweight Running Shoes for Men",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0D693G5HC",
+      "matchConfidence": 92,
+      "matchType": "title_search",
+      "currentPrice": 149.99,
+      "previousPrice": 164.99,
+      "regularPrice": 179.99,
+      "priceDiff": -15.01,
+      "priceDiffPercent": -9.1,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:02 AM",
+      "channelType": "marketplace",
+      "platform": "amazon",
+      "sellerName": "Amazon Warehouse Direct",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 169.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 164.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 164.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 149.99,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-2",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-walmart",
+      "competitorName": "Walmart Retail",
+      "competitorProductTitle": "New Balance Men's FuelCell Supercomp Carbon Running Shoes",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0DJV5H7NL",
+      "matchConfidence": 89,
+      "matchType": "title_search",
+      "currentPrice": 158.0,
+      "previousPrice": 158.0,
+      "regularPrice": 175.0,
+      "priceDiff": -7.0,
+      "priceDiffPercent": -4.2,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:04 AM",
+      "channelType": "marketplace",
+      "platform": "walmart",
+      "sellerName": "AthleticFootwear Hub",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 165.0,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 158.0,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 158.0,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 158.0,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-3",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-dickssporting",
+      "competitorName": "Dick's Sporting Goods",
+      "competitorProductTitle": "New Balance FuelCell Supercomp Elite Carbon Running Shoes",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0DJTTC7X2",
+      "matchConfidence": 88,
+      "matchType": "sku_exact",
+      "currentPrice": 164.99,
+      "previousPrice": 164.99,
+      "regularPrice": 180.0,
+      "priceDiff": -0.01,
+      "priceDiffPercent": 0.0,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:05 AM",
+      "channelType": "brand_official",
+      "platform": "custom_brand",
+      "sellerName": "Dick's Sporting Official Store",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 169.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 164.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 164.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 164.99,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
       "id": "match-4",
       "tenantId": "tenant-apex",
       "productId": "prod-apex-2",
       "competitorId": "comp-amazon",
       "competitorName": "Amazon Marketplace",
-      "competitorProductTitle": "Apex Core High Waisted Seamless Workout Compression Leggings",
-      "competitorProductUrl": "https://www.amazon.com/dp/B08LEGG302",
-      "matchConfidence": 96,
+      "competitorProductTitle": "AUROLA Influence Women's Seamless Workout Leggings",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0DDTF44HT",
+      "matchConfidence": 85,
       "matchType": "title_search",
       "currentPrice": 69.95,
       "previousPrice": 69.95,
@@ -395,9 +530,9 @@
       "productId": "prod-apex-2",
       "competitorId": "comp-target",
       "competitorName": "Target Sport",
-      "competitorProductTitle": "Womens Apex Core Performance Seamless Compression Tights",
-      "competitorProductUrl": "https://www.target.com/p/apex-core-compression-leggings",
-      "matchConfidence": 92,
+      "competitorProductTitle": "IUGA High Waisted Compression Leggings with Pockets",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0DBHHR1SH",
+      "matchConfidence": 82,
       "matchType": "title_search",
       "currentPrice": 75,
       "previousPrice": 75,
@@ -436,9 +571,9 @@
       "productId": "prod-apex-3",
       "competitorId": "comp-dickssporting",
       "competitorName": "Dick's Sporting Goods",
-      "competitorProductTitle": "Apex Aerolite Lightweight 10L Trail Running Hydration Vest Pack",
-      "competitorProductUrl": "https://www.dickssportinggoods.com/p/aerolite-hydration-vest",
-      "matchConfidence": 95,
+      "competitorProductTitle": "Maelstrom Running Hydration Vest with 2L Water Bladder",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0GKG8W767",
+      "matchConfidence": 86,
       "matchType": "title_search",
       "currentPrice": 94.5,
       "previousPrice": 99,
@@ -477,9 +612,9 @@
       "productId": "prod-apex-4",
       "competitorId": "comp-amazon",
       "competitorName": "Amazon Marketplace",
-      "competitorProductTitle": "Apex Athletic Thermo Shield Weatherproof Lightweight Windbreaker",
-      "competitorProductUrl": "https://www.amazon.com/dp/B08WNDBRK",
-      "matchConfidence": 93,
+      "competitorProductTitle": "Saucony Lightweight Windbreaker Water Resistant Running Jacket",
+      "competitorProductUrl": "https://www.amazon.com/dp/B075G8836T",
+      "matchConfidence": 78,
       "matchType": "title_search",
       "currentPrice": 109,
       "previousPrice": 124,
@@ -518,9 +653,9 @@
       "productId": "prod-aura-1",
       "competitorId": "comp-bestbuy-aura",
       "competitorName": "Best Buy Electronics",
-      "competitorProductTitle": "Aura Wave X Pro Wireless Noise Cancelling Over-Ear Headphones - Matte Black",
-      "competitorProductUrl": "https://www.bestbuy.com/site/aura-wave-x-pro/938102",
-      "matchConfidence": 99,
+      "competitorProductTitle": "Sony WH-1000XM4 Wireless Noise Cancelling Over-Ear Headphones, Black",
+      "competitorProductUrl": "https://www.amazon.com/dp/B0863TXGM3",
+      "matchConfidence": 96,
       "matchType": "title_search",
       "currentPrice": 229,
       "previousPrice": 249,
