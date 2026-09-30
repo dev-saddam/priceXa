@@ -6,8 +6,8 @@
       "slug": "apex-athletics",
       "logo": "⚡",
       "industry": "Sportswear & Footwear",
-      "currency": "USD",
-      "currencySymbol": "$",
+      "currency": "GBP",
+      "currencySymbol": "£",
       "planId": "enterprise",
       "planStatus": "active",
       "scanFrequency": "hourly",
@@ -23,7 +23,9 @@
       "contactEmail": "pricing-ops@apexathletics.com",
       "webhookUrl": "https://api.apexathletics.com/webhooks/pricing",
       "emailAlertsEnabled": true,
-      "autoRepriceRecommendation": true
+      "autoRepriceRecommendation": true,
+      "country": "UK",
+      "countryCode": "UK"
     },
     {
       "id": "tenant-aura",
@@ -80,75 +82,39 @@
     {
       "name": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
       "brand": "SKECHERS",
-      "code": "APX-011",
+      "code": "T-125",
       "category": "Footwear",
       "mrp": 6000,
-      "currentPrice": 5000,
-      "costPrice": 3000,
+      "currentPrice": 5999,
+      "costPrice": 5000,
       "minMarginPercent": 30,
       "stockStatus": "in_stock",
       "stockCount": 50,
-      "productUrl": "https://www.skechers.in/",
+      "productUrl": "",
       "imageUrl": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
       "tenantId": "tenant-apex",
-      "id": "prod-1790767765446-0x53",
+      "id": "prod-1790772489272-bgsj",
       "createdAt": "2026-09-30",
-      "matchesCount": 1,
-      "marketPosition": "competitive",
-      "matchingStatus": "partially_matched",
-      "lowestCompetitorPrice": 5000,
-      "averageCompetitorPrice": 5000,
-      "isSearchingCompetitors": false
+      "matchesCount": 2,
+      "marketPosition": "expensive",
+      "matchingStatus": "fully_matched",
+      "isSearchingCompetitors": false,
+      "lowestCompetitorPrice": 5599,
+      "averageCompetitorPrice": 6088.65
     }
   ],
   "competitors": [
     {
       "id": "comp-amazon",
       "tenantId": "tenant-apex",
-      "name": "Amazon Marketplace",
-      "domain": "amazon.com",
-      "baseUrl": "https://www.amazon.com",
+      "name": "Amazon Marketplace (UK)",
+      "domain": "amazon.co.uk",
+      "baseUrl": "https://amazon.co.uk",
       "logo": "📦",
       "status": "active",
       "monitoredProductsCount": 2,
-      "avgPriceDiffPercent": 0,
+      "avgPriceDiffPercent": 4.8,
       "lastScrapedAt": "Today at 08:02 AM"
-    },
-    {
-      "id": "comp-walmart",
-      "tenantId": "tenant-apex",
-      "name": "Walmart Retail",
-      "domain": "walmart.com",
-      "baseUrl": "https://www.walmart.com",
-      "logo": "🛒",
-      "status": "active",
-      "monitoredProductsCount": 0,
-      "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:04 AM"
-    },
-    {
-      "id": "comp-dickssporting",
-      "tenantId": "tenant-apex",
-      "name": "Dick's Sporting Goods",
-      "domain": "dickssportinggoods.com",
-      "baseUrl": "https://www.dickssportinggoods.com",
-      "logo": "🏀",
-      "status": "active",
-      "monitoredProductsCount": 0,
-      "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:05 AM"
-    },
-    {
-      "id": "comp-target",
-      "tenantId": "tenant-apex",
-      "name": "Target Sport",
-      "domain": "target.com",
-      "baseUrl": "https://www.target.com",
-      "logo": "🎯",
-      "status": "active",
-      "monitoredProductsCount": 0,
-      "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:06 AM"
     },
     {
       "id": "comp-bestbuy-aura",
@@ -197,38 +163,22 @@
       "monitoredProductsCount": 0,
       "avgPriceDiffPercent": 0,
       "lastScrapedAt": "Yesterday at 08:07 PM"
+    },
+    {
+      "name": "SKECHERS",
+      "domain": "skechers.co.uk",
+      "baseUrl": "https://skechers.co.uk",
+      "logo": "🏷️",
+      "channelType": "brand_official",
+      "status": "active",
+      "tenantId": "tenant-apex",
+      "id": "comp-1790769054236-du2f",
+      "monitoredProductsCount": 1,
+      "avgPriceDiffPercent": -6.7,
+      "lastScrapedAt": "Never"
     }
   ],
   "matches": [
-    {
-      "id": "match-1790767832491-comp-amazon-2lbv",
-      "tenantId": "tenant-apex",
-      "productId": "prod-1790767765446-0x53",
-      "competitorId": "comp-amazon",
-      "competitorName": "Amazon Marketplace",
-      "competitorProductTitle": "Skechers Men's D'Lux Walker 2.0 Rezinate",
-      "competitorProductUrl": "https://amazon.com/dp/B0DB2XPLQZ",
-      "matchConfidence": 75,
-      "matchType": "title_search",
-      "currentPrice": 5000,
-      "previousPrice": 5000,
-      "priceDiff": 0,
-      "priceDiffPercent": 0,
-      "stockStatus": "in_stock",
-      "currency": "USD",
-      "lastScrapedAt": "Just now",
-      "priceHistory": [
-        {
-          "timestamp": "2026-09-30T11:30:32.491Z",
-          "price": 5000,
-          "stockStatus": "in_stock"
-        }
-      ],
-      "status": "confirmed",
-      "channelType": "marketplace",
-      "platform": "amazon",
-      "sellerName": "AMAZON Verified Buybox"
-    },
     {
       "id": "match-bg-1790768421172-comp-amazon-gjbs",
       "tenantId": "tenant-apex",
@@ -257,6 +207,65 @@
       "channelType": "marketplace",
       "platform": "amazon",
       "sellerName": "AMAZON Verified Buybox"
+    },
+    {
+      "id": "match-bg-1790772508261-comp-amazon-f8d4",
+      "tenantId": "tenant-apex",
+      "productId": "prod-1790772489272-bgsj",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "Amazon.com | Skechers Sport Slip-Ins RF: D'Lux Walker 2.0 Men's Sneaker, 9 2E US, Grey-Charcoal | Walking",
+      "competitorProductUrl": "https://amazon.com/dp/B0DB2XPLQZ",
+      "matchConfidence": 91,
+      "matchType": "title_search",
+      "currentPrice": 6578.29,
+      "previousPrice": 6578.29,
+      "priceDiff": 579.29,
+      "priceDiffPercent": 9.7,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "Today",
+          "price": 6578.29,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed",
+      "channelType": "marketplace",
+      "platform": "amazon",
+      "sellerName": "AMAZON Marketplace"
+    },
+    {
+      "id": "match-bg-1790772511217-comp-1790769054236-du2f-wweq",
+      "tenantId": "tenant-apex",
+      "productId": "prod-1790772489272-bgsj",
+      "competitorId": "comp-1790769054236-du2f",
+      "competitorName": "SKECHERS",
+      "competitorProductTitle": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
+      "competitorProductUrl": "https://www.skechers.in/skechers-slip-ins-rf%3A-d-lux-walker-2.0---rezinate/232446-GYCC.html",
+      "matchConfidence": 100,
+      "matchType": "title_search",
+      "currentPrice": 5599,
+      "previousPrice": 5599,
+      "regularPrice": 7999,
+      "priceDiff": -400,
+      "priceDiffPercent": -6.7,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "Today",
+          "price": 5599,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed",
+      "channelType": "brand_official",
+      "platform": "demandware",
+      "sellerName": "Brand Official Webstore"
     }
   ],
   "alertRules": [
@@ -374,5 +383,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-09-30T11:40:25.965Z"
+  "lastUpdated": "2026-09-30T13:19:07.196Z"
 }

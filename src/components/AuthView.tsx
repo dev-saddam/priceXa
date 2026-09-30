@@ -16,6 +16,12 @@ import {
   DollarSign,
   AlertCircle,
 } from 'lucide-react';
+import { 
+  COUNTRY_LIST,
+  SUPPORTED_COUNTRIES, 
+  SUPPORTED_CURRENCIES, 
+  getCountryConfig 
+} from '@/lib/countryConfig';
 
 export const AuthView: React.FC = () => {
   const { login, registerCompany, tenants } = useApp();
@@ -29,7 +35,14 @@ export const AuthView: React.FC = () => {
   // Registration Fields
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('Sportswear & Apparel');
-  const [currency, setCurrency] = useState('USD');
+  const [country, setCountry] = useState('UK');
+  const [currency, setCurrency] = useState('GBP');
+
+  const handleCountrySelect = (code: string) => {
+    setCountry(code);
+    const cfg = getCountryConfig(code);
+    setCurrency(cfg.defaultCurrency);
+  };
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +74,7 @@ export const AuthView: React.FC = () => {
       email: email.trim(),
       password,
       industry,
+      country,
       currency,
     });
     setLoading(false);
@@ -287,42 +301,65 @@ export const AuthView: React.FC = () => {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-blue-400" />
-                      Industry
+                      <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                      Target Search Country
                     </label>
                     <select
-                      value={industry}
-                      onChange={(e) => setIndustry(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                      value={country}
+                      onChange={(e) => handleCountrySelect(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-cyan-500 transition-all cursor-pointer"
                     >
-                      <option value="Sportswear & Apparel">Sportswear & Apparel</option>
-                      <option value="Consumer Electronics">Consumer Electronics</option>
-                      <option value="Cosmetics & Skincare">Cosmetics & Skincare</option>
-                      <option value="Footwear & Sneakers">Footwear & Sneakers</option>
-                      <option value="Home & Kitchen">Home & Kitchen</option>
-                      <option value="Health & Supplements">Health & Supplements</option>
-                      <option value="General E-Commerce">General E-Commerce</option>
+                      {COUNTRY_LIST.map((c) => (
+                        <option key={c.code} value={c.code} className="bg-slate-900 text-white">
+                          {c.flag} {c.name} ({c.code})
+                        </option>
+                      ))}
                     </select>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                      <DollarSign className="w-3.5 h-3.5 text-blue-400" />
+                      <DollarSign className="w-3.5 h-3.5 text-amber-400" />
                       Store Currency
                     </label>
                     <select
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                      className="w-full px-3 py-2.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-cyan-500 transition-all cursor-pointer"
                     >
-                      <option value="USD">USD ($ - US Dollar)</option>
-                      <option value="EUR">EUR (€ - Euro)</option>
-                      <option value="GBP">GBP (£ - British Pound)</option>
-                      <option value="CAD">CAD ($ - Canadian Dollar)</option>
-                      <option value="AUD">AUD ($ - Australian Dollar)</option>
-                      <option value="INR">INR (₹ - Indian Rupee)</option>
+                      {SUPPORTED_CURRENCIES.map((cur) => (
+                        <option key={cur.code} value={cur.code} className="bg-slate-900 text-white">
+                          {cur.symbol} - {cur.code} ({cur.name})
+                        </option>
+                      ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Country Search Region Indicator */}
+                <div className="px-3.5 py-2 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-300 flex items-center justify-between">
+                  <span>Search Region: <strong>{getCountryConfig(country).flag} {getCountryConfig(country).name}</strong></span>
+                  <span className="font-mono text-cyan-400">{getCountryConfig(country).amazonDomain}</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                    <Building className="w-3.5 h-3.5 text-blue-400" />
+                    Industry Sector
+                  </label>
+                  <select
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-2xl bg-slate-950/80 border border-white/[0.08] text-xs text-white focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+                  >
+                    <option value="Sportswear & Apparel">Sportswear & Apparel</option>
+                    <option value="Consumer Electronics">Consumer Electronics</option>
+                    <option value="Cosmetics & Skincare">Cosmetics & Skincare</option>
+                    <option value="Footwear & Sneakers">Footwear & Sneakers</option>
+                    <option value="Home & Kitchen">Home & Kitchen</option>
+                    <option value="Health & Supplements">Health & Supplements</option>
+                    <option value="General E-Commerce">General E-Commerce</option>
+                  </select>
                 </div>
 
                 {/* 14-Day Free Trial Notice */}

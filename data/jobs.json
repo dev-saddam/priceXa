@@ -1,5 +1,80 @@
 [
   {
+    "id": "job-1790772489293-c5j0",
+    "tenantId": "tenant-apex",
+    "type": "batch_auto_match",
+    "title": "Background Competitor Search for SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "productIds": [
+        "prod-1790772489272-bgsj"
+      ]
+    },
+    "createdAt": "2026-09-30T12:48:09.293Z",
+    "startedAt": "2026-09-30T12:48:09.296Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "matchesSaved": 2,
+      "durationMs": 22444
+    },
+    "completedAt": "2026-09-30T12:48:31.748Z"
+  },
+  {
+    "id": "job-1790769117555-ekt7",
+    "tenantId": "tenant-apex",
+    "type": "batch_auto_match",
+    "title": "Background Competitor Search for SKECHERS",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "productIds": [
+        "prod-1790769117536-zobd"
+      ]
+    },
+    "createdAt": "2026-09-30T11:51:57.555Z",
+    "startedAt": "2026-09-30T11:51:57.558Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "matchesSaved": 1,
+      "durationMs": 30960
+    },
+    "completedAt": "2026-09-30T11:52:28.528Z"
+  },
+  {
+    "id": "job-1790768556681-gy1u",
+    "tenantId": "tenant-apex",
+    "type": "batch_auto_match",
+    "title": "Background Competitor Search for SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "productIds": [
+        "prod-1790768556663-g90q"
+      ]
+    },
+    "createdAt": "2026-09-30T11:42:36.681Z",
+    "startedAt": "2026-09-30T11:42:36.683Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "matchesSaved": 1,
+      "durationMs": 28421
+    },
+    "completedAt": "2026-09-30T11:43:05.111Z"
+  },
+  {
     "id": "job-1790768394429-u19o",
     "tenantId": "tenant-apex",
     "type": "batch_auto_match",

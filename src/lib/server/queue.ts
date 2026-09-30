@@ -7,6 +7,7 @@ import {
   getProductById,
   getProducts,
   getCompetitors,
+  getTenants,
   getMatches,
   saveProductMatches,
   addScanJob,
@@ -194,6 +195,10 @@ async function handleSearchCandidatesJob(job: BackgroundJob) {
   const product = await getProductById(productId);
   if (!product) throw new Error('Product not found');
 
+  const tenant = (await getTenants()).find((t) => t.id === tenantId);
+  const country = tenant?.country || 'US';
+  const currency = tenant?.currency || 'USD';
+
   const competitors = (await getCompetitors(tenantId)).filter((c) => c.status === 'active');
   job.totalItems = competitors.length;
   persistJobsToFile();
@@ -208,7 +213,7 @@ async function handleSearchCandidatesJob(job: BackgroundJob) {
     job.progress = Math.round(((i + 0.2) / competitors.length) * 100);
     persistJobsToFile();
 
-    const group = await searchCompetitorProductCandidates(product, comp);
+    const group = await searchCompetitorProductCandidates(product, comp, country, currency);
     groups.push(group);
 
     job.processedItems = i + 1;
@@ -230,6 +235,11 @@ async function handleSearchCandidatesJob(job: BackgroundJob) {
  */
 async function handleBatchAutoMatchJob(job: BackgroundJob) {
   const { productIds, tenantId } = job.payload;
+  const tenants = await getTenants();
+  const tenant = tenants.find((t) => t.id === tenantId);
+  const country = tenant?.country || tenant?.countryCode || 'IN';
+  const currency = tenant?.currency || 'INR';
+
   const products = await getProducts(tenantId);
   const targetProducts = productIds?.length
     ? products.filter((p) => productIds.includes(p.id))
@@ -252,7 +262,7 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
     const newMatches: CompetitorProductMatch[] = [];
 
     for (const comp of competitors) {
-      const group = await searchCompetitorProductCandidates(prod, comp);
+      const group = await searchCompetitorProductCandidates(prod, comp, country, currency);
       const topCand = group.candidates[0];
       if (topCand) {
         const diff = Number((topCand.price - prod.currentPrice).toFixed(2));

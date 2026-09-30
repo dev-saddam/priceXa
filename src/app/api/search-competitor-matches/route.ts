@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProductById, getCompetitors } from '@/lib/server/db';
+import { getProductById, getCompetitors, getTenants } from '@/lib/server/db';
 import { searchCompetitorProductCandidates } from '@/lib/server/crawler';
 import { CompetitorCandidateGroup } from '@/types';
 
@@ -18,11 +18,14 @@ export async function POST(req: Request) {
     }
 
     const effectiveTenantId = tenantId || product.tenantId;
+    const tenant = (await getTenants()).find((t) => t.id === effectiveTenantId);
+    const country = tenant?.country || 'US';
+    const currency = tenant?.currency || 'USD';
     const competitors = (await getCompetitors(effectiveTenantId)).filter((c) => c.status === 'active');
 
-    // Run searches for each competitor concurrently (using Google/DuckDuckGo + crawler)
+    // Run searches for each competitor concurrently with country & currency targeting
     const groups = await Promise.all(
-      competitors.map((comp) => searchCompetitorProductCandidates(product, comp))
+      competitors.map((comp) => searchCompetitorProductCandidates(product, comp, country, currency))
     );
 
     return NextResponse.json({

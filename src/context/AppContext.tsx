@@ -85,9 +85,10 @@ interface AppContextType {
   addAlertRule: (rule: Omit<AlertRule, 'id' | 'tenantId' | 'timesTriggered' | 'createdAt'>) => void;
   toggleAlertRule: (ruleId: string) => void;
   deleteAlertRule: (ruleId: string) => void;
-  registerBrandTenant: (tenantData: { name: string; industry: string; contactEmail: string; planId: PlanTier; currency: string }) => Promise<Tenant>;
+  registerBrandTenant: (tenantData: { name: string; industry: string; contactEmail: string; planId: PlanTier; currency: string; country?: string }) => Promise<Tenant>;
   updateTenantPlan: (tenantId: string, planId: PlanTier, status?: Tenant['planStatus']) => Promise<void>;
   updateTenantPlanStatus: (tenantId: string, status: Tenant['planStatus']) => Promise<void>;
+  updateTenantSettings: (tenantId: string, updates: Partial<Tenant>) => Promise<{ success: boolean; error?: string }>;
   updatePlanDetails: (planId: PlanTier, updates: Partial<SubscriptionPlan>) => void;
   purchasePlan: (planId: PlanTier) => Promise<void>;
   refreshBackendData: () => Promise<void>;
@@ -102,6 +103,7 @@ interface AppContextType {
     password?: string;
     industry: string;
     currency: string;
+    country?: string;
     planId?: PlanTier;
   }) => Promise<{ success: boolean; error?: string }>;
   isUpgradeModalOpen: boolean;
@@ -1087,6 +1089,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const updateTenantSettings = async (
+    tenantId: string,
+    updates: Partial<Tenant>
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/tenants', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tenantId, ...updates }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        return { success: false, error: data.error };
+      }
+
+      setTenants((prev) =>
+        prev.map((t) => (t.id === tenantId ? { ...t, ...updates, ...data.tenant } : t))
+      );
+
+      await refreshBackendData();
+      return { success: true };
+    } catch (err: any) {
+      console.error('Failed to update tenant settings on backend:', err);
+      return { success: false, error: err.message || 'Failed to update settings.' };
+    }
+  };
+
   const purchasePlan = async (planId: PlanTier) => {
     await updateTenantPlan(currentTenant.id, planId, 'active');
   };
@@ -1140,6 +1169,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     password?: string;
     industry: string;
     currency: string;
+    country?: string;
     planId?: PlanTier;
   }): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -1230,6 +1260,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         registerBrandTenant,
         updateTenantPlan,
         updateTenantPlanStatus,
+        updateTenantSettings,
         updatePlanDetails,
         purchasePlan,
         refreshBackendData,

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getTenants, addTenant, updateTenant } from '@/lib/server/db';
+import { getTenants, addTenant, updateTenant, getCompetitors, saveDb, getDb } from '@/lib/server/db';
 import { Tenant, PlanTier } from '@/types';
+import { getCountryConfig, getCurrencySymbol, adaptDomainForCountry } from '@/lib/countryConfig';
 
 export async function GET() {
   try {
@@ -14,11 +15,22 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { name, industry, contactEmail, planId = 'growth', currency = 'USD' } = body;
+    const {
+      name,
+      industry,
+      contactEmail,
+      planId = 'growth',
+      country = 'US',
+      currency,
+    } = body;
 
     if (!name || !contactEmail) {
       return NextResponse.json({ success: false, error: 'Name and contact email are required' }, { status: 400 });
     }
+
+    const countryConfig = getCountryConfig(country);
+    const resolvedCurrency = currency || countryConfig.defaultCurrency;
+    const currencySymbol = getCurrencySymbol(resolvedCurrency);
 
     const id = `tenant-${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
     const newTenant: Tenant = {
@@ -27,8 +39,10 @@ export async function POST(req: Request) {
       slug: name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
       logo: '✨',
       industry: industry || 'Retail',
-      currency,
-      currencySymbol: currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '$',
+      country: countryConfig.code,
+      countryCode: countryConfig.code,
+      currency: resolvedCurrency,
+      currencySymbol,
       planId: planId as PlanTier,
       planStatus: 'active',
       scanFrequency: '2x_daily',
@@ -53,13 +67,64 @@ export async function POST(req: Request) {
 export async function PATCH(req: Request) {
   try {
     const body = await req.json();
-    const { id, planId, planStatus } = body;
+    const {
+      id,
+      planId,
+      planStatus,
+      country,
+      currency,
+      currencySymbol,
+      contactEmail,
+      webhookUrl,
+      emailAlertsEnabled,
+      name,
+      industry,
+    } = body;
+
     if (!id) {
       return NextResponse.json({ success: false, error: 'Tenant ID is required' }, { status: 400 });
     }
 
     const updates: Partial<Tenant> = {};
     if (planStatus) updates.planStatus = planStatus;
+    if (name) updates.name = name;
+    if (industry) updates.industry = industry;
+    if (contactEmail) updates.contactEmail = contactEmail;
+    if (webhookUrl !== undefined) updates.webhookUrl = webhookUrl;
+    if (emailAlertsEnabled !== undefined) updates.emailAlertsEnabled = emailAlertsEnabled;
+
+    if (country) {
+      const countryConfig = getCountryConfig(country);
+      updates.country = countryConfig.code;
+      updates.countryCode = countryConfig.code;
+
+      // Update tenant competitors to match target country (e.g. amazon.com -> amazon.co.uk)
+      const db = await getDb();
+      const tenantCompetitors = db.competitors.filter((c) => c.tenantId === id);
+      for (const comp of tenantCompetitors) {
+        const newDomain = adaptDomainForCountry(comp.domain, countryConfig.code);
+        if (newDomain !== comp.domain) {
+          comp.domain = newDomain;
+          comp.baseUrl = `https://${newDomain}`;
+          if (comp.platform === 'amazon' || comp.name.includes('Amazon')) {
+            comp.name = `Amazon Marketplace (${countryConfig.code})`;
+          } else if (comp.platform === 'ebay' || comp.name.includes('eBay')) {
+            comp.name = `eBay (${countryConfig.code})`;
+          }
+        }
+      }
+      await saveDb(db);
+    }
+
+    if (currency) {
+      updates.currency = currency;
+      updates.currencySymbol = currencySymbol || getCurrencySymbol(currency);
+    } else if (country && !currency) {
+      const countryConfig = getCountryConfig(country);
+      updates.currency = countryConfig.defaultCurrency;
+      updates.currencySymbol = countryConfig.currencySymbol;
+    }
+
     if (planId) {
       updates.planId = planId;
       updates.skuLimit = planId === 'enterprise' ? 10000 : planId === 'growth' ? 1500 : 250;

@@ -28,6 +28,8 @@ export interface Tenant {
   slug: string;
   logo: string;
   industry: string;
+  country?: string; // e.g. "UK", "US", "IN", "DE", "CA", "AU"
+  countryCode?: string;
   currency: string;
   currencySymbol: string;
   planId: PlanTier;
