@@ -1,0 +1,1038 @@
+{
+  "tenants": [
+    {
+      "id": "tenant-apex",
+      "name": "Apex Athletics",
+      "slug": "apex-athletics",
+      "logo": "⚡",
+      "industry": "Sportswear & Footwear",
+      "currency": "USD",
+      "currencySymbol": "$",
+      "planId": "growth",
+      "planStatus": "active",
+      "scanFrequency": "2x_daily",
+      "scanTimes": [
+        "08:00 AM",
+        "08:00 PM"
+      ],
+      "lastScanAt": "Today at 08:00 AM",
+      "nextScanAt": "Today at 08:00 PM",
+      "skuLimit": 1500,
+      "competitorLimit": 15,
+      "createdAt": "2025-11-12",
+      "contactEmail": "pricing-ops@apexathletics.com",
+      "webhookUrl": "https://api.apexathletics.com/webhooks/pricing",
+      "emailAlertsEnabled": true,
+      "autoRepriceRecommendation": true
+    },
+    {
+      "id": "tenant-aura",
+      "name": "Aura Soundworks",
+      "slug": "aura-soundworks",
+      "logo": "🎧",
+      "industry": "Consumer Audio & Tech",
+      "currency": "USD",
+      "currencySymbol": "$",
+      "planId": "growth",
+      "planStatus": "active",
+      "scanFrequency": "2x_daily",
+      "scanTimes": [
+        "08:00 AM",
+        "08:00 PM"
+      ],
+      "lastScanAt": "Today at 08:00 AM",
+      "nextScanAt": "Today at 08:00 PM",
+      "skuLimit": 1500,
+      "competitorLimit": 15,
+      "createdAt": "2026-01-05",
+      "contactEmail": "director@aurasoundworks.com",
+      "webhookUrl": "",
+      "emailAlertsEnabled": true,
+      "autoRepriceRecommendation": true
+    },
+    {
+      "id": "tenant-lumina",
+      "name": "Lumina Skin Labs",
+      "slug": "lumina-skin",
+      "logo": "✨",
+      "industry": "Cosmetics & Skincare",
+      "currency": "USD",
+      "currencySymbol": "$",
+      "planId": "starter",
+      "planStatus": "trial",
+      "scanFrequency": "2x_daily",
+      "scanTimes": [
+        "08:00 AM",
+        "08:00 PM"
+      ],
+      "lastScanAt": "Yesterday at 08:00 PM",
+      "nextScanAt": "Today at 08:00 PM",
+      "skuLimit": 250,
+      "competitorLimit": 5,
+      "createdAt": "2026-03-10",
+      "contactEmail": "operations@luminaskin.co",
+      "webhookUrl": "",
+      "emailAlertsEnabled": false,
+      "autoRepriceRecommendation": false
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-apex-1",
+      "tenantId": "tenant-apex",
+      "name": "Apex Velocity Pro Carbon Running Shoes",
+      "brand": "Apex Athletics",
+      "code": "APX-RUN-701",
+      "category": "Footwear",
+      "mrp": 180,
+      "currentPrice": 154.99,
+      "costPrice": 85,
+      "minMarginPercent": 35,
+      "stockStatus": "in_stock",
+      "stockCount": 142,
+      "imageUrl": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&q=80",
+      "productUrl": "https://apexathletics.com/products/velocity-pro-carbon",
+      "createdAt": "2026-01-15",
+      "matchesCount": 4,
+      "marketPosition": "cheapest",
+      "lowestCompetitorPrice": 155.1,
+      "averageCompetitorPrice": 155.1,
+      "matchingStatus": "fully_matched"
+    },
+    {
+      "id": "prod-apex-2",
+      "tenantId": "tenant-apex",
+      "name": "Apex Core Seamless Compression Leggings",
+      "brand": "Apex Athletics",
+      "code": "APX-LEG-302",
+      "category": "Apparel",
+      "mrp": 75,
+      "currentPrice": 62,
+      "costPrice": 28,
+      "minMarginPercent": 40,
+      "stockStatus": "in_stock",
+      "stockCount": 320,
+      "imageUrl": "https://images.unsplash.com/photo-1506619216599-9d16d0903dfd?w=400&q=80",
+      "productUrl": "https://apexathletics.com/products/core-seamless-leggings",
+      "createdAt": "2026-01-18",
+      "matchesCount": 2,
+      "marketPosition": "cheapest",
+      "lowestCompetitorPrice": 69.95,
+      "averageCompetitorPrice": 72.47,
+      "matchingStatus": "partially_matched"
+    },
+    {
+      "id": "prod-apex-3",
+      "tenantId": "tenant-apex",
+      "name": "Apex Aerolite Hydration Running Vest 10L",
+      "brand": "Apex Athletics",
+      "code": "APX-VST-108",
+      "category": "Accessories",
+      "mrp": 110,
+      "currentPrice": 95,
+      "costPrice": 42,
+      "minMarginPercent": 45,
+      "stockStatus": "low_stock",
+      "stockCount": 18,
+      "imageUrl": "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80",
+      "productUrl": "https://apexathletics.com/products/aerolite-running-vest",
+      "createdAt": "2026-02-01",
+      "matchesCount": 1,
+      "marketPosition": "expensive",
+      "lowestCompetitorPrice": 94.5,
+      "averageCompetitorPrice": 94.5,
+      "matchingStatus": "partially_matched"
+    },
+    {
+      "id": "prod-apex-4",
+      "tenantId": "tenant-apex",
+      "name": "Apex Thermo-Shield Hooded Windbreaker Jacket",
+      "brand": "Apex Athletics",
+      "code": "APX-JKT-409",
+      "category": "Outerwear",
+      "mrp": 135,
+      "currentPrice": 120,
+      "costPrice": 55,
+      "minMarginPercent": 35,
+      "stockStatus": "in_stock",
+      "stockCount": 88,
+      "imageUrl": "https://images.unsplash.com/photo-1544441893-675973e31985?w=400&q=80",
+      "productUrl": "https://apexathletics.com/products/thermo-shield-windbreaker",
+      "createdAt": "2026-02-10",
+      "matchesCount": 1,
+      "marketPosition": "expensive",
+      "lowestCompetitorPrice": 109,
+      "averageCompetitorPrice": 109,
+      "matchingStatus": "partially_matched"
+    },
+    {
+      "id": "prod-apex-5",
+      "tenantId": "tenant-apex",
+      "name": "Apex GripTech Multi-Surface Cross Trainer",
+      "brand": "Apex Athletics",
+      "code": "APX-TRN-880",
+      "category": "Footwear",
+      "mrp": 140,
+      "currentPrice": 125,
+      "costPrice": 62,
+      "minMarginPercent": 30,
+      "stockStatus": "out_of_stock",
+      "stockCount": 0,
+      "imageUrl": "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=400&q=80",
+      "productUrl": "https://apexathletics.com/products/griptech-cross-trainer",
+      "createdAt": "2026-02-14",
+      "matchesCount": 0,
+      "marketPosition": "unmatched",
+      "matchingStatus": "unmatched"
+    },
+    {
+      "id": "prod-aura-1",
+      "tenantId": "tenant-aura",
+      "name": "Aura Wave X Pro Hybrid ANC Wireless Headphones",
+      "brand": "Aura Soundworks",
+      "code": "AUR-HP-990",
+      "category": "Headphones",
+      "mrp": 299,
+      "currentPrice": 249,
+      "costPrice": 110,
+      "minMarginPercent": 40,
+      "stockStatus": "in_stock",
+      "stockCount": 95,
+      "imageUrl": "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80",
+      "productUrl": "https://aurasoundworks.com/products/wave-x-pro",
+      "createdAt": "2026-01-20",
+      "matchesCount": 2,
+      "marketPosition": "expensive",
+      "lowestCompetitorPrice": 229,
+      "averageCompetitorPrice": 239
+    },
+    {
+      "id": "prod-aura-2",
+      "tenantId": "tenant-aura",
+      "name": "Aura Pulse 360 Waterproof Bluetooth Speaker",
+      "brand": "Aura Soundworks",
+      "code": "AUR-SPK-360",
+      "category": "Speakers",
+      "mrp": 129,
+      "currentPrice": 109,
+      "costPrice": 48,
+      "minMarginPercent": 35,
+      "stockStatus": "in_stock",
+      "stockCount": 210,
+      "imageUrl": "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=400&q=80",
+      "productUrl": "https://aurasoundworks.com/products/pulse-360",
+      "createdAt": "2026-02-05",
+      "matchesCount": 2,
+      "marketPosition": "cheapest",
+      "lowestCompetitorPrice": 119.99,
+      "averageCompetitorPrice": 124.5
+    },
+    {
+      "id": "prod-lumina-1",
+      "tenantId": "tenant-lumina",
+      "name": "Lumina 15% Vitamin C + Ferulic Glow Serum 30ml",
+      "brand": "Lumina Skin Labs",
+      "code": "LUM-SRM-015",
+      "category": "Serums",
+      "mrp": 68,
+      "currentPrice": 58,
+      "costPrice": 16,
+      "minMarginPercent": 55,
+      "stockStatus": "in_stock",
+      "stockCount": 450,
+      "imageUrl": "https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400&q=80",
+      "productUrl": "https://luminaskin.co/serums/vit-c-glow",
+      "createdAt": "2026-03-11",
+      "matchesCount": 2,
+      "marketPosition": "cheapest",
+      "lowestCompetitorPrice": 62,
+      "averageCompetitorPrice": 65
+    }
+  ],
+  "competitors": [
+    {
+      "id": "comp-amazon",
+      "tenantId": "tenant-apex",
+      "name": "Amazon Marketplace",
+      "domain": "amazon.com",
+      "baseUrl": "https://www.amazon.com",
+      "logo": "📦",
+      "status": "active",
+      "monitoredProductsCount": 3,
+      "avgPriceDiffPercent": -0.8,
+      "lastScrapedAt": "Today at 08:02 AM"
+    },
+    {
+      "id": "comp-walmart",
+      "tenantId": "tenant-apex",
+      "name": "Walmart Retail",
+      "domain": "walmart.com",
+      "baseUrl": "https://www.walmart.com",
+      "logo": "🛒",
+      "status": "active",
+      "monitoredProductsCount": 1,
+      "avgPriceDiffPercent": -6,
+      "lastScrapedAt": "Today at 08:04 AM"
+    },
+    {
+      "id": "comp-dickssporting",
+      "tenantId": "tenant-apex",
+      "name": "Dick's Sporting Goods",
+      "domain": "dickssportinggoods.com",
+      "baseUrl": "https://www.dickssportinggoods.com",
+      "logo": "🏀",
+      "status": "active",
+      "monitoredProductsCount": 2,
+      "avgPriceDiffPercent": -3.3,
+      "lastScrapedAt": "Today at 08:05 AM"
+    },
+    {
+      "id": "comp-target",
+      "tenantId": "tenant-apex",
+      "name": "Target Sport",
+      "domain": "target.com",
+      "baseUrl": "https://www.target.com",
+      "logo": "🎯",
+      "status": "active",
+      "monitoredProductsCount": 2,
+      "avgPriceDiffPercent": 7.4,
+      "lastScrapedAt": "Today at 08:06 AM"
+    },
+    {
+      "id": "comp-bestbuy-aura",
+      "tenantId": "tenant-aura",
+      "name": "Best Buy Electronics",
+      "domain": "bestbuy.com",
+      "baseUrl": "https://www.bestbuy.com",
+      "logo": "🏷️",
+      "status": "active",
+      "monitoredProductsCount": 4,
+      "avgPriceDiffPercent": -3.8,
+      "lastScrapedAt": "Today at 08:03 AM"
+    },
+    {
+      "id": "comp-bhphoto-aura",
+      "tenantId": "tenant-aura",
+      "name": "B&H Photo Video Pro",
+      "domain": "bhphotovideo.com",
+      "baseUrl": "https://www.bhphotovideo.com",
+      "logo": "📷",
+      "status": "active",
+      "monitoredProductsCount": 4,
+      "avgPriceDiffPercent": 1.2,
+      "lastScrapedAt": "Today at 08:05 AM"
+    },
+    {
+      "id": "comp-sephora",
+      "tenantId": "tenant-lumina",
+      "name": "Sephora Beauty",
+      "domain": "sephora.com",
+      "baseUrl": "https://www.sephora.com",
+      "logo": "💄",
+      "status": "active",
+      "monitoredProductsCount": 3,
+      "avgPriceDiffPercent": 0,
+      "lastScrapedAt": "Yesterday at 08:05 PM"
+    },
+    {
+      "id": "comp-ulta",
+      "tenantId": "tenant-lumina",
+      "name": "Ulta Beauty Store",
+      "domain": "ulta.com",
+      "baseUrl": "https://www.ulta.com",
+      "logo": "💋",
+      "status": "active",
+      "monitoredProductsCount": 3,
+      "avgPriceDiffPercent": -6.5,
+      "lastScrapedAt": "Yesterday at 08:07 PM"
+    }
+  ],
+  "matches": [
+    {
+      "id": "match-4",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-2",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "Apex Core High Waisted Seamless Workout Compression Leggings",
+      "competitorProductUrl": "https://www.amazon.com/dp/B08LEGG302",
+      "matchConfidence": 96,
+      "matchType": "title_search",
+      "currentPrice": 69.95,
+      "previousPrice": 69.95,
+      "priceDiff": 7.95,
+      "priceDiffPercent": 12.8,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:02 AM",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 74.99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 69.95,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 69.95,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 69.95,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-5",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-2",
+      "competitorId": "comp-target",
+      "competitorName": "Target Sport",
+      "competitorProductTitle": "Womens Apex Core Performance Seamless Compression Tights",
+      "competitorProductUrl": "https://www.target.com/p/apex-core-compression-leggings",
+      "matchConfidence": 92,
+      "matchType": "title_search",
+      "currentPrice": 75,
+      "previousPrice": 75,
+      "priceDiff": 13,
+      "priceDiffPercent": 20.9,
+      "stockStatus": "out_of_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:06 AM",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 75,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 75,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 75,
+          "stockStatus": "low_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 75,
+          "stockStatus": "out_of_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-6",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-3",
+      "competitorId": "comp-dickssporting",
+      "competitorName": "Dick's Sporting Goods",
+      "competitorProductTitle": "Apex Aerolite Lightweight 10L Trail Running Hydration Vest Pack",
+      "competitorProductUrl": "https://www.dickssportinggoods.com/p/aerolite-hydration-vest",
+      "matchConfidence": 95,
+      "matchType": "title_search",
+      "currentPrice": 94.5,
+      "previousPrice": 99,
+      "priceDiff": -0.5,
+      "priceDiffPercent": -0.5,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:05 AM",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 104,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 99,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 94.5,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-7",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-4",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "Apex Athletic Thermo Shield Weatherproof Lightweight Windbreaker",
+      "competitorProductUrl": "https://www.amazon.com/dp/B08WNDBRK",
+      "matchConfidence": 93,
+      "matchType": "title_search",
+      "currentPrice": 109,
+      "previousPrice": 124,
+      "priceDiff": -11,
+      "priceDiffPercent": -9.2,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:02 AM",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 129,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 124,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 124,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 109,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-8",
+      "tenantId": "tenant-aura",
+      "productId": "prod-aura-1",
+      "competitorId": "comp-bestbuy-aura",
+      "competitorName": "Best Buy Electronics",
+      "competitorProductTitle": "Aura Wave X Pro Wireless Noise Cancelling Over-Ear Headphones - Matte Black",
+      "competitorProductUrl": "https://www.bestbuy.com/site/aura-wave-x-pro/938102",
+      "matchConfidence": 99,
+      "matchType": "title_search",
+      "currentPrice": 229,
+      "previousPrice": 249,
+      "priceDiff": -20,
+      "priceDiffPercent": -8,
+      "stockStatus": "in_stock",
+      "currency": "$",
+      "lastScrapedAt": "Today at 08:03 AM",
+      "priceHistory": [
+        {
+          "timestamp": "14 days ago",
+          "price": 279,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "7 days ago",
+          "price": 249,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Yesterday",
+          "price": 249,
+          "stockStatus": "in_stock"
+        },
+        {
+          "timestamp": "Today (08:00 AM)",
+          "price": 229,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-1790756485030-comp-amazon-nsy5",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "competitorProductTitle": "Apex Athletics Apex Velocity Pro Carbon Running Shoes Official - In Stock",
+      "competitorProductUrl": "https://www.amazon.com/dp/APX-RUN-701",
+      "matchConfidence": 97,
+      "matchType": "title_search",
+      "currentPrice": 155.1,
+      "previousPrice": 155.1,
+      "priceDiff": -9.9,
+      "priceDiffPercent": -6,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "2026-09-30T08:21:25.030Z",
+          "price": 155.1,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-1790756485030-comp-walmart-e28i",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-walmart",
+      "competitorName": "Walmart Retail",
+      "competitorProductTitle": "Apex Athletics Apex Velocity Pro Carbon Running Shoes Official - In Stock",
+      "competitorProductUrl": "https://www.walmart.com/dp/APX-RUN-701",
+      "matchConfidence": 97,
+      "matchType": "title_search",
+      "currentPrice": 155.1,
+      "previousPrice": 155.1,
+      "priceDiff": -9.9,
+      "priceDiffPercent": -6,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "2026-09-30T08:21:25.030Z",
+          "price": 155.1,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-1790756485030-comp-dickssporting-v0fs",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-dickssporting",
+      "competitorName": "Dick's Sporting Goods",
+      "competitorProductTitle": "Apex Athletics Apex Velocity Pro Carbon Running Shoes Official - In Stock",
+      "competitorProductUrl": "https://www.dickssportinggoods.com/dp/APX-RUN-701",
+      "matchConfidence": 97,
+      "matchType": "title_search",
+      "currentPrice": 155.1,
+      "previousPrice": 155.1,
+      "priceDiff": -9.9,
+      "priceDiffPercent": -6,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "2026-09-30T08:21:25.030Z",
+          "price": 155.1,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    },
+    {
+      "id": "match-1790756485030-comp-target-p1db",
+      "tenantId": "tenant-apex",
+      "productId": "prod-apex-1",
+      "competitorId": "comp-target",
+      "competitorName": "Target Sport",
+      "competitorProductTitle": "Apex Athletics Apex Velocity Pro Carbon Running Shoes Official - In Stock",
+      "competitorProductUrl": "https://www.target.com/dp/APX-RUN-701",
+      "matchConfidence": 97,
+      "matchType": "title_search",
+      "currentPrice": 155.1,
+      "previousPrice": 155.1,
+      "priceDiff": -9.9,
+      "priceDiffPercent": -6,
+      "stockStatus": "in_stock",
+      "currency": "USD",
+      "lastScrapedAt": "Just now",
+      "priceHistory": [
+        {
+          "timestamp": "2026-09-30T08:21:25.030Z",
+          "price": 155.1,
+          "stockStatus": "in_stock"
+        }
+      ],
+      "status": "confirmed"
+    }
+  ],
+  "alertRules": [
+    {
+      "id": "rule-1",
+      "tenantId": "tenant-apex",
+      "name": "Competitor Under-Cut Alert (> 5%)",
+      "conditionType": "competitor_cheaper_by_pct",
+      "thresholdValue": 5,
+      "severity": "critical",
+      "enabled": true,
+      "channel": "both",
+      "timesTriggered": 18,
+      "createdAt": "2026-01-20"
+    },
+    {
+      "id": "rule-2",
+      "tenantId": "tenant-apex",
+      "name": "Direct Price Below MRP Warning",
+      "conditionType": "cheaper_than_mrp",
+      "thresholdValue": 10,
+      "severity": "warning",
+      "enabled": true,
+      "channel": "in_app",
+      "timesTriggered": 7,
+      "createdAt": "2026-01-22"
+    },
+    {
+      "id": "rule-3",
+      "tenantId": "tenant-apex",
+      "name": "Competitor Out-of-Stock Arbitrage Opportunity",
+      "conditionType": "stock_out",
+      "thresholdValue": 0,
+      "severity": "info",
+      "enabled": true,
+      "channel": "both",
+      "timesTriggered": 12,
+      "createdAt": "2026-02-01"
+    },
+    {
+      "id": "rule-4",
+      "tenantId": "tenant-apex",
+      "name": "Sudden Competitor Price Drop (> $10)",
+      "conditionType": "price_drop",
+      "thresholdValue": 10,
+      "severity": "critical",
+      "enabled": true,
+      "channel": "both",
+      "timesTriggered": 9,
+      "createdAt": "2026-02-10"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif-1",
+      "tenantId": "tenant-apex",
+      "ruleId": "rule-1",
+      "ruleName": "Competitor Under-Cut Alert (> 5%)",
+      "severity": "critical",
+      "title": "Amazon discounted Apex Velocity Pro Carbon by $15.00",
+      "message": "Amazon dropped the price from $164.99 down to $149.99 (9.1% cheaper than your price of $165.00). This triggers rule \"Competitor Under-Cut Alert (> 5%)\".",
+      "productId": "prod-apex-1",
+      "productName": "Apex Velocity Pro Carbon Running Shoes",
+      "productSku": "APX-RUN-701",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "oldPrice": 164.99,
+      "newPrice": 149.99,
+      "myPrice": 165,
+      "priceDiffPercent": -9.1,
+      "timestamp": "Today at 08:02 AM",
+      "read": false,
+      "actionTaken": null
+    },
+    {
+      "id": "notif-2",
+      "tenantId": "tenant-apex",
+      "ruleId": "rule-3",
+      "ruleName": "Competitor Out-of-Stock Arbitrage Opportunity",
+      "severity": "info",
+      "title": "Target is now Out of Stock on Apex Core Leggings",
+      "message": "Target marked \"Apex Core Seamless Compression Leggings\" as Out of Stock! You have 320 units in stock. Consider raising your price or boosting ad spend.",
+      "productId": "prod-apex-2",
+      "productName": "Apex Core Seamless Compression Leggings",
+      "productSku": "APX-LEG-302",
+      "competitorId": "comp-target",
+      "competitorName": "Target Sport",
+      "oldPrice": 75,
+      "newPrice": 75,
+      "myPrice": 62,
+      "priceDiffPercent": 20.9,
+      "stockChange": {
+        "from": "in_stock",
+        "to": "out_of_stock"
+      },
+      "timestamp": "Today at 08:06 AM",
+      "read": false,
+      "actionTaken": null
+    },
+    {
+      "id": "notif-3",
+      "tenantId": "tenant-apex",
+      "ruleId": "rule-4",
+      "ruleName": "Sudden Competitor Price Drop (> $10)",
+      "severity": "warning",
+      "title": "Amazon dropped price on Windbreaker Jacket by $15.00",
+      "message": "Apex Thermo-Shield Windbreaker price fell to $109.00 on Amazon (was $124.00). Your price is $120.00.",
+      "productId": "prod-apex-4",
+      "productName": "Apex Thermo-Shield Hooded Windbreaker Jacket",
+      "productSku": "APX-JKT-409",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace",
+      "oldPrice": 124,
+      "newPrice": 109,
+      "myPrice": 120,
+      "priceDiffPercent": -9.2,
+      "timestamp": "Today at 08:02 AM",
+      "read": true,
+      "actionTaken": null
+    },
+    {
+      "id": "notif-4",
+      "tenantId": "tenant-apex",
+      "severity": "info",
+      "title": "Scheduled Morning Crawl Completed (08:00 AM)",
+      "message": "Crawled 4 competitor domains across 5 products. Detected 2 price reductions, 0 price hikes, and 1 competitor stockout.",
+      "productId": "system",
+      "productName": "Twice-Daily Automated Scheduler",
+      "productSku": "SYSTEM",
+      "competitorId": "all",
+      "competitorName": "Crawler Cluster #3",
+      "oldPrice": 0,
+      "newPrice": 0,
+      "myPrice": 0,
+      "priceDiffPercent": 0,
+      "timestamp": "Today at 08:06 AM",
+      "read": true
+    }
+  ],
+  "scanJobs": [
+    {
+      "id": "scan-bg-1790757303617",
+      "tenantId": "tenant-apex",
+      "batchType": "scheduled_am",
+      "status": "completed",
+      "startedAt": "02:04 PM",
+      "completedAt": "02:05 PM",
+      "durationMs": 4500,
+      "productsScanned": 5,
+      "competitorPagesCrawled": 8,
+      "priceChangesFound": 8,
+      "stockChangesFound": 1,
+      "alertsTriggered": 5,
+      "logItems": [
+        {
+          "timestamp": "2:04:54 PM",
+          "level": "info",
+          "text": "Background worker started crawler across 8 monitored URLs"
+        }
+      ]
+    },
+    {
+      "id": "scan-1790756490293-5801",
+      "tenantId": "tenant-apex",
+      "batchType": "manual_instant",
+      "status": "completed",
+      "startedAt": "01:51 PM",
+      "completedAt": "01:51 PM",
+      "durationMs": 4993,
+      "productsScanned": 5,
+      "competitorPagesCrawled": 8,
+      "priceChangesFound": 8,
+      "stockChangesFound": 1,
+      "alertsTriggered": 6,
+      "logItems": [
+        {
+          "timestamp": "1:51:25 PM",
+          "level": "info",
+          "text": "Starting crawler engine across 8 active competitor URLs"
+        },
+        {
+          "timestamp": "1:51:25 PM",
+          "level": "warn",
+          "text": "Price shift detected on Amazon Marketplace for Apex Core Seamless Compression Leggings: $69.95 → $63"
+        },
+        {
+          "timestamp": "1:51:26 PM",
+          "level": "warn",
+          "text": "Price shift detected on Target Sport for Apex Core Seamless Compression Leggings: $75 → $67.5"
+        },
+        {
+          "timestamp": "1:51:26 PM",
+          "level": "warn",
+          "text": "Stock status updated to in_stock on Target Sport for Apex Core Seamless Compression Leggings"
+        },
+        {
+          "timestamp": "1:51:27 PM",
+          "level": "warn",
+          "text": "Price shift detected on Dick's Sporting Goods for Apex Aerolite Hydration Running Vest 10L: $94.5 → $90.31"
+        },
+        {
+          "timestamp": "1:51:27 PM",
+          "level": "warn",
+          "text": "Price shift detected on Amazon Marketplace for Apex Thermo-Shield Hooded Windbreaker Jacket: $109 → $103.09"
+        },
+        {
+          "timestamp": "1:51:27 PM",
+          "level": "warn",
+          "text": "Price shift detected on Amazon Marketplace for Apex Velocity Pro Carbon Running Shoes: $155.1 → $144.01"
+        },
+        {
+          "timestamp": "1:51:28 PM",
+          "level": "warn",
+          "text": "Price shift detected on Walmart Retail for Apex Velocity Pro Carbon Running Shoes: $155.1 → $155.68"
+        },
+        {
+          "timestamp": "1:51:28 PM",
+          "level": "warn",
+          "text": "Price shift detected on Dick's Sporting Goods for Apex Velocity Pro Carbon Running Shoes: $155.1 → $140.16"
+        },
+        {
+          "timestamp": "1:51:30 PM",
+          "level": "warn",
+          "text": "Price shift detected on Target Sport for Apex Velocity Pro Carbon Running Shoes: $155.1 → $144.01"
+        },
+        {
+          "timestamp": "1:51:30 PM",
+          "level": "success",
+          "text": "Scan completed in 4.99s: 8 price shifts, 1 stock changes."
+        }
+      ]
+    },
+    {
+      "id": "job-today-am",
+      "tenantId": "tenant-apex",
+      "batchType": "scheduled_am",
+      "status": "completed",
+      "startedAt": "Today at 08:00:02 AM",
+      "completedAt": "Today at 08:06:44 AM",
+      "durationMs": 402000,
+      "productsScanned": 5,
+      "competitorPagesCrawled": 12,
+      "priceChangesFound": 2,
+      "stockChangesFound": 1,
+      "alertsTriggered": 2,
+      "logItems": [
+        {
+          "timestamp": "08:00:02",
+          "level": "info",
+          "text": "Initializing scheduled morning crawl (08:00 AM slot)..."
+        },
+        {
+          "timestamp": "08:01:14",
+          "level": "info",
+          "text": "Fetched domain amazon.com via US-East residential proxy pool."
+        },
+        {
+          "timestamp": "08:02:18",
+          "level": "warn",
+          "text": "Price delta found on APX-RUN-701: $164.99 -> $149.99 on Amazon"
+        },
+        {
+          "timestamp": "08:03:05",
+          "level": "info",
+          "text": "Fetched domain walmart.com: parsed 4 SKU selectors correctly."
+        },
+        {
+          "timestamp": "08:05:22",
+          "level": "info",
+          "text": "Fetched dickssportinggoods.com: all prices verified in sync."
+        },
+        {
+          "timestamp": "08:06:11",
+          "level": "warn",
+          "text": "Stock transition detected on target.com: APX-LEG-302 marked OUT OF STOCK."
+        },
+        {
+          "timestamp": "08:06:44",
+          "level": "success",
+          "text": "Scan completed successfully. Generated 2 alert notifications."
+        }
+      ]
+    },
+    {
+      "id": "job-yesterday-pm",
+      "tenantId": "tenant-apex",
+      "batchType": "scheduled_pm",
+      "status": "completed",
+      "startedAt": "Yesterday at 08:00:01 PM",
+      "completedAt": "Yesterday at 08:05:12 PM",
+      "durationMs": 311000,
+      "productsScanned": 5,
+      "competitorPagesCrawled": 12,
+      "priceChangesFound": 1,
+      "stockChangesFound": 0,
+      "alertsTriggered": 1,
+      "logItems": [
+        {
+          "timestamp": "20:00:01",
+          "level": "info",
+          "text": "Scheduled evening crawl initiated."
+        },
+        {
+          "timestamp": "20:02:30",
+          "level": "info",
+          "text": "Discovered promotional badge on Amazon listing."
+        },
+        {
+          "timestamp": "20:05:12",
+          "level": "success",
+          "text": "Evening crawl finalized. 1 alert generated."
+        }
+      ]
+    }
+  ],
+  "plans": [
+    {
+      "id": "starter",
+      "name": "Starter Intelligence",
+      "priceMonthly": 79,
+      "priceYearly": 790,
+      "maxProducts": 250,
+      "maxCompetitors": 5,
+      "scanFrequency": "1x_daily",
+      "scanFrequencyLabel": "Once Daily (08:00 AM)",
+      "features": [
+        "250 Monitored SKUs",
+        "5 Competitor Domains",
+        "1x Daily Automated Crawl",
+        "CSV Catalog Importer",
+        "Email & In-App Alerts",
+        "7-day Price History"
+      ],
+      "activeSubscribers": 12
+    },
+    {
+      "id": "growth",
+      "name": "Growth Pro",
+      "priceMonthly": 199,
+      "priceYearly": 1990,
+      "maxProducts": 1500,
+      "maxCompetitors": 15,
+      "scanFrequency": "2x_daily",
+      "scanFrequencyLabel": "Twice Daily (08:00 AM & 08:00 PM)",
+      "features": [
+        "1,500 Monitored SKUs",
+        "15 Competitor Domains",
+        "2x Daily Automated Crawls (AM/PM)",
+        "AI Title Auto-Matcher",
+        "Real-time Stockout & Price Drop Alerts",
+        "Dynamic Repricing Simulator",
+        "Exportable Audit Reports",
+        "90-day Price History"
+      ],
+      "activeSubscribers": 34
+    },
+    {
+      "id": "enterprise",
+      "name": "Enterprise Matrix",
+      "priceMonthly": 499,
+      "priceYearly": 4990,
+      "maxProducts": 10000,
+      "maxCompetitors": 50,
+      "scanFrequency": "hourly",
+      "scanFrequencyLabel": "Hourly & Real-time Webhooks",
+      "features": [
+        "10,000+ Monitored SKUs",
+        "50 Competitor Domains",
+        "Hourly Crawling Engine",
+        "Custom Anti-Bot Proxy Routing",
+        "Dedicated Account Engineer",
+        "Automated Headless Webhook Triggers",
+        "Full API & ERP Connectors (Shopify/Magento)",
+        "Unlimited Historical Trends"
+      ],
+      "activeSubscribers": 8
+    }
+  ],
+  "lastUpdated": "2026-09-30T08:35:03.627Z"
+}

@@ -1,0 +1,108 @@
+@import "tailwindcss";
+
+:root {
+  --background: #080d19;
+  --foreground: #f1f5f9;
+  --card: #0f172a;
+  --card-border: rgba(255, 255, 255, 0.07);
+}
+
+body {
+  background-color: #080d19;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(59, 130, 246, 0.08), transparent 70%),
+    radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.05), transparent 40%);
+  background-attachment: fixed;
+  color: #f1f5f9;
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow-x: hidden;
+  letter-spacing: -0.011em;
+}
+
+/* Custom modern scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Glass & Card styles */
+.glass-card {
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+}
+
+.glass-card-hover {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.glass-card-hover:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(15, 23, 42, 0.85);
+  transform: translateY(-1px);
+}
+
+.glass-panel-elevated {
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
+}
+
+/* Subtly glowing text */
+.text-glow-blue {
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.35);
+}
+
+/* Subtle badge styles */
+.badge-clean-emerald {
+  background: rgba(16, 185, 129, 0.08);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.badge-clean-rose {
+  background: rgba(244, 63, 94, 0.08);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.badge-clean-amber {
+  background: rgba(245, 158, 11, 0.08);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.badge-clean-blue {
+  background: rgba(59, 130, 246, 0.08);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.badge-clean-purple {
+  background: rgba(168, 85, 247, 0.08);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.2);
+}
+
+/* Clean Button Styles */
+.btn-primary-clean {
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.btn-primary-clean:hover {
+  background: linear-gradient(180deg, #60a5fa 0%, #3b82f6 100%);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
