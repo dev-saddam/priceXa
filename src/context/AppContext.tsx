@@ -14,6 +14,7 @@ import {
   CandidateMatchOption,
   CompetitorCandidateGroup,
   BackgroundJob,
+  AuthUser,
 } from '@/types';
 import {
   INITIAL_TENANTS,
@@ -84,9 +85,26 @@ interface AppContextType {
   toggleAlertRule: (ruleId: string) => void;
   deleteAlertRule: (ruleId: string) => void;
   registerBrandTenant: (tenantData: { name: string; industry: string; contactEmail: string; planId: PlanTier; currency: string }) => Promise<Tenant>;
-  updateTenantPlan: (tenantId: string, planId: PlanTier, status?: Tenant['planStatus']) => void;
+  updateTenantPlan: (tenantId: string, planId: PlanTier, status?: Tenant['planStatus']) => Promise<void>;
+  updateTenantPlanStatus: (tenantId: string, status: Tenant['planStatus']) => Promise<void>;
   updatePlanDetails: (planId: PlanTier, updates: Partial<SubscriptionPlan>) => void;
+  purchasePlan: (planId: PlanTier) => Promise<void>;
   refreshBackendData: () => Promise<void>;
+  
+  // Auth & Session
+  currentUser: AuthUser | null;
+  login: (email: string, password?: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => void;
+  registerCompany: (data: {
+    companyName: string;
+    email: string;
+    password?: string;
+    industry: string;
+    currency: string;
+    planId?: PlanTier;
+  }) => Promise<{ success: boolean; error?: string }>;
+  isUpgradeModalOpen: boolean;
+  setIsUpgradeModalOpen: (open: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -96,6 +114,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [currentTenantId, setCurrentTenantId] = useState<string>('tenant-apex');
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState<boolean>(false);
 
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [competitors, setCompetitors] = useState<Competitor[]>(INITIAL_COMPETITORS);
@@ -209,6 +229,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Backend sync failed, running in resilient mode:', err);
       setBackendConnected(false);
     }
+  }, []);
+
+  // Load authenticated session from localStorage on client mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('pricexa_auth_user');
+      if (stored) {
+        const u: AuthUser = JSON.parse(stored);
+        setCurrentUser(u);
+        if (u.role === 'super_admin') {
+          setIsSuperAdmin(true);
+        } else if (u.tenantId) {
+          setIsSuperAdmin(false);
+          setCurrentTenantId(u.tenantId);
+        }
+      }
+    } catch {}
   }, []);
 
   // Sync live database on mount
@@ -943,7 +980,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return fallbackTenant;
   };
 
-  const updateTenantPlan = (tenantId: string, planId: PlanTier, status: Tenant['planStatus'] = 'active') => {
+  const updateTenantPlan = async (tenantId: string, planId: PlanTier, status?: Tenant['planStatus']) => {
     const plan = plans.find((p) => p.id === planId) || plans[1];
     setTenants((prev) =>
       prev.map((t) =>
@@ -951,13 +988,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           ? {
               ...t,
               planId,
-              planStatus: status,
+              planStatus: status || t.planStatus,
               skuLimit: plan.maxProducts,
               competitorLimit: plan.maxCompetitors,
             }
           : t
       )
     );
+
+    try {
+      await fetch('/api/tenants', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tenantId, planId, planStatus: status }),
+      });
+    } catch (err) {
+      console.error('Failed to update tenant plan on backend:', err);
+    }
+  };
+
+  const updateTenantPlanStatus = async (tenantId: string, status: Tenant['planStatus']) => {
+    setTenants((prev) =>
+      prev.map((t) => (t.id === tenantId ? { ...t, planStatus: status } : t))
+    );
+
+    try {
+      await fetch('/api/tenants', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: tenantId, planStatus: status }),
+      });
+    } catch (err) {
+      console.error('Failed to update tenant status on backend:', err);
+    }
+  };
+
+  const purchasePlan = async (planId: PlanTier) => {
+    await updateTenantPlan(currentTenant.id, planId, 'active');
+  };
+
+  const login = async (email: string, password?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        return { success: false, error: data.error };
+      }
+
+      const user: AuthUser = data.user;
+      setCurrentUser(user);
+      try {
+        localStorage.setItem('pricexa_auth_user', JSON.stringify(user));
+      } catch {}
+
+      if (user.role === 'super_admin') {
+        setIsSuperAdmin(true);
+        setActiveTab('superadmin');
+      } else {
+        setIsSuperAdmin(false);
+        setCurrentTenantId(user.tenantId);
+        setActiveTab('dashboard');
+      }
+
+      await refreshBackendData();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Login connection failed.' };
+    }
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    setIsSuperAdmin(false);
+    try {
+      localStorage.removeItem('pricexa_auth_user');
+    } catch {}
+    setActiveTab('dashboard');
+  };
+
+  const registerCompany = async (data: {
+    companyName: string;
+    email: string;
+    password?: string;
+    industry: string;
+    currency: string;
+    planId?: PlanTier;
+  }): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const resData = await res.json();
+      if (!resData.success) {
+        return { success: false, error: resData.error };
+      }
+
+      const user: AuthUser = resData.user;
+      const newTenant: Tenant = resData.tenant;
+
+      setTenants((prev) => [newTenant, ...prev.filter((t) => t.id !== newTenant.id)]);
+      setCurrentUser(user);
+      try {
+        localStorage.setItem('pricexa_auth_user', JSON.stringify(user));
+      } catch {}
+
+      setIsSuperAdmin(false);
+      setCurrentTenantId(newTenant.id);
+      setActiveTab('dashboard');
+
+      await refreshBackendData();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Company registration failed.' };
+    }
   };
 
   const updatePlanDetails = (planId: PlanTier, updates: Partial<SubscriptionPlan>) => {
@@ -1015,8 +1164,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         deleteAlertRule,
         registerBrandTenant,
         updateTenantPlan,
+        updateTenantPlanStatus,
         updatePlanDetails,
+        purchasePlan,
         refreshBackendData,
+        currentUser,
+        login,
+        logout,
+        registerCompany,
+        isUpgradeModalOpen,
+        setIsUpgradeModalOpen,
       }}
     >
       {children}

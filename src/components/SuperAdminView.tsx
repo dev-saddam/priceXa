@@ -26,6 +26,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onOpenRegisterBr
     setIsSuperAdmin,
     setActiveTab,
     updateTenantPlan,
+    updateTenantPlanStatus,
     updatePlanDetails,
   } = useApp();
 
@@ -229,6 +230,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onOpenRegisterBr
                             className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                               t.planStatus === 'active'
                                 ? 'badge-clean-emerald'
+                                : t.planStatus === 'suspended'
+                                ? 'badge-clean-rose'
                                 : 'badge-clean-amber'
                             }`}
                           >
@@ -248,14 +251,33 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({ onOpenRegisterBr
                           </div>
                         </td>
 
-                        {/* Impersonate / Switch */}
+                        {/* Admin Actions: Suspend / Reactivate & View */}
                         <td className="p-4 text-right">
-                          <button
-                            onClick={() => handleSwitchToTenant(t.id)}
-                            className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/25 text-xs font-semibold transition-colors cursor-pointer"
-                          >
-                            Impersonate & View →
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() =>
+                                updateTenantPlanStatus(
+                                  t.id,
+                                  t.planStatus === 'suspended' ? 'active' : 'suspended'
+                                )
+                              }
+                              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                                t.planStatus === 'suspended'
+                                  ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                  : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border-rose-500/30'
+                              }`}
+                              title={t.planStatus === 'suspended' ? 'Reactivate brand account' : 'Suspend brand account'}
+                            >
+                              {t.planStatus === 'suspended' ? 'Reactivate' : 'Suspend'}
+                            </button>
+
+                            <button
+                              onClick={() => handleSwitchToTenant(t.id)}
+                              className="px-3 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/25 text-xs font-semibold transition-colors cursor-pointer"
+                            >
+                              View →
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

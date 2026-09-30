@@ -9,6 +9,8 @@ import {
   ChevronDown,
   Plus,
   Radio,
+  LogOut,
+  CreditCard,
 } from 'lucide-react';
 
 interface HeaderProps {
@@ -31,6 +33,9 @@ export const Header: React.FC<HeaderProps> = ({
     notifications,
     isScanning,
     setActiveTab,
+    currentUser,
+    logout,
+    setIsUpgradeModalOpen,
   } = useApp();
 
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
@@ -61,12 +66,12 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div className="h-5 w-px bg-white/[0.08] hidden md:block" />
 
-        {/* Tenant / Brand Switcher */}
-        {!isSuperAdmin ? (
+        {/* Tenant / Brand Switcher (Locked for regular company, selectable for Super Admin) */}
+        {currentUser?.role === 'super_admin' ? (
           <div className="relative">
             <button
               onClick={() => setBrandDropdownOpen(!brandDropdownOpen)}
-              className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/[0.08] hover:border-white/20 hover:bg-slate-900 transition-all text-xs font-medium group"
+              className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/[0.08] hover:border-white/20 hover:bg-slate-900 transition-all text-xs font-medium group cursor-pointer"
             >
               <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-slate-800/80 text-xs border border-white/[0.06]">
                 {currentTenant.logo}
@@ -83,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({
             {brandDropdownOpen && (
               <div className="absolute top-full left-0 mt-2 w-72 rounded-2xl bg-slate-900/95 border border-white/10 shadow-2xl backdrop-blur-xl p-1.5 z-50 animate-in fade-in zoom-in-95">
                 <div className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                  Brand Workspaces
+                  Admin Brand Switcher
                 </div>
                 <div className="space-y-1 max-h-60 overflow-y-auto">
                   {tenants.map((t) => (
@@ -93,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
                         setCurrentTenantId(t.id);
                         setBrandDropdownOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all ${
+                      className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all cursor-pointer ${
                         t.id === currentTenant.id
                           ? 'bg-blue-600/15 text-blue-300 border border-blue-500/30'
                           : 'hover:bg-slate-800/60 text-slate-300'
@@ -119,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setBrandDropdownOpen(false);
                       onOpenRegisterBrand();
                     }}
-                    className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-blue-400 hover:bg-blue-500/10 transition-colors"
+                    className="w-full flex items-center gap-2 p-2 rounded-xl text-xs font-semibold text-blue-400 hover:bg-blue-500/10 transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Register New Brand
@@ -129,14 +134,40 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-semibold">
-            <Shield className="w-3.5 h-3.5 text-amber-400" />
-            Super Administrator View
+          /* Multi-tenant Isolated View: Company sees only own brand & clickable plan upgrade badge */
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/60 border border-white/[0.08] text-xs font-medium">
+            <div className="w-5 h-5 rounded-lg flex items-center justify-center bg-slate-800/80 text-xs border border-white/[0.06]">
+              {currentTenant.logo}
+            </div>
+            <span className="font-semibold text-slate-200">
+              {currentTenant.name}
+            </span>
+            <button
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className={`text-[10px] uppercase font-bold tracking-wider px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 shadow-sm ${
+                currentTenant.planStatus === 'trial'
+                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 hover:bg-amber-500/25 shadow-amber-500/10'
+                  : 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-500/25 shadow-indigo-500/10'
+              }`}
+              title="Click to buy or upgrade subscription plan"
+            >
+              {currentTenant.planStatus === 'trial' ? (
+                <>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Free Trial · Buy Plan</span>
+                </>
+              ) : (
+                <>
+                  <span>{currentTenant.planId}</span>
+                  <span className="text-[9px] text-indigo-400 font-normal">↑ Upgrade</span>
+                </>
+              )}
+            </button>
           </div>
         )}
       </div>
 
-      {/* Right: Crawl Indicator, Live Scan Button, Notifications, Super Admin Switch */}
+      {/* Right: Crawl Indicator, Live Scan Button, Notifications, Admin Switch & Logout */}
       <div className="flex items-center gap-3">
         {/* Scheduler status badge */}
         {!isSuperAdmin && (
@@ -174,22 +205,45 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </button>
 
-        {/* Super Admin Switcher */}
-        <button
-          onClick={() => {
-            const nextState = !isSuperAdmin;
-            setIsSuperAdmin(nextState);
-            setActiveTab(nextState ? 'superadmin' : 'dashboard');
-          }}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
-            isSuperAdmin
-              ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
-              : 'bg-slate-900/60 border-white/[0.08] text-slate-400 hover:text-slate-200 hover:border-white/20'
-          }`}
-        >
-          <Shield className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">{isSuperAdmin ? 'Exit Admin' : 'Super Admin'}</span>
-        </button>
+        {/* Super Admin Switcher (Super Admin Only) */}
+        {currentUser?.role === 'super_admin' && (
+          <button
+            onClick={() => {
+              const nextState = !isSuperAdmin;
+              setIsSuperAdmin(nextState);
+              setActiveTab(nextState ? 'superadmin' : 'dashboard');
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+              isSuperAdmin
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-300 hover:bg-amber-500/25'
+                : 'bg-slate-900/60 border-white/[0.08] text-slate-400 hover:text-slate-200 hover:border-white/20'
+            }`}
+          >
+            <Shield className="w-3.5 h-3.5" />
+            <span className="hidden md:inline">{isSuperAdmin ? 'Exit Admin' : 'Super Admin'}</span>
+          </button>
+        )}
+
+        {/* User profile & Log Out */}
+        {currentUser && (
+          <div className="flex items-center gap-2 pl-2 border-l border-white/[0.08]">
+            <div className="hidden sm:flex flex-col text-right">
+              <span className="text-xs font-bold text-slate-200 truncate max-w-[120px]">
+                {currentUser.name}
+              </span>
+              <span className="text-[10px] text-slate-400 truncate max-w-[120px]">
+                {currentUser.role === 'super_admin' ? '👑 Admin' : currentUser.companyName}
+              </span>
+            </div>
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl bg-slate-900/60 border border-white/[0.08] text-slate-400 hover:text-rose-300 hover:border-rose-500/30 hover:bg-rose-500/10 transition-all cursor-pointer"
+              title="Sign out of account"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

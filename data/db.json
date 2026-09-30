@@ -8,17 +8,17 @@
       "industry": "Sportswear & Footwear",
       "currency": "USD",
       "currencySymbol": "$",
-      "planId": "growth",
+      "planId": "enterprise",
       "planStatus": "active",
-      "scanFrequency": "2x_daily",
+      "scanFrequency": "hourly",
       "scanTimes": [
         "08:00 AM",
         "08:00 PM"
       ],
       "lastScanAt": "Today at 08:00 AM",
       "nextScanAt": "Today at 08:00 PM",
-      "skuLimit": 1500,
-      "competitorLimit": 15,
+      "skuLimit": 10000,
+      "competitorLimit": 50,
       "createdAt": "2025-11-12",
       "contactEmail": "pricing-ops@apexathletics.com",
       "webhookUrl": "https://api.apexathletics.com/webhooks/pricing",
@@ -291,5 +291,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-09-30T10:12:47.421Z"
+  "lastUpdated": "2026-09-30T11:24:47.820Z"
 }

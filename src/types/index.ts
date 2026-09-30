@@ -1,5 +1,14 @@
 export type PlanTier = 'starter' | 'growth' | 'enterprise';
 
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: 'super_admin' | 'company_owner';
+  tenantId: string;
+  companyName: string;
+}
+
 export interface SubscriptionPlan {
   id: PlanTier;
   name: string;

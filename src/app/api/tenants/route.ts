@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTenants, addTenant } from '@/lib/server/db';
+import { getTenants, addTenant, updateTenant } from '@/lib/server/db';
 import { Tenant, PlanTier } from '@/types';
 
 export async function GET() {
@@ -45,6 +45,33 @@ export async function POST(req: Request) {
 
     const created = await addTenant(newTenant);
     return NextResponse.json({ success: true, tenant: created });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request) {
+  try {
+    const body = await req.json();
+    const { id, planId, planStatus } = body;
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'Tenant ID is required' }, { status: 400 });
+    }
+
+    const updates: Partial<Tenant> = {};
+    if (planStatus) updates.planStatus = planStatus;
+    if (planId) {
+      updates.planId = planId;
+      updates.skuLimit = planId === 'enterprise' ? 10000 : planId === 'growth' ? 1500 : 250;
+      updates.competitorLimit = planId === 'enterprise' ? 50 : planId === 'growth' ? 15 : 5;
+      updates.scanFrequency = planId === 'enterprise' ? 'hourly' : '2x_daily';
+    }
+
+    const updated = await updateTenant(id, updates);
+    if (!updated) {
+      return NextResponse.json({ success: false, error: 'Tenant not found' }, { status: 404 });
+    }
+    return NextResponse.json({ success: true, tenant: updated });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

@@ -26,6 +26,8 @@ export const Sidebar: React.FC = () => {
     competitors,
     plans,
     notifications,
+    currentUser,
+    setIsUpgradeModalOpen,
   } = useApp();
 
   const tenantProducts = products.filter((p) => p.tenantId === currentTenant.id);
@@ -110,7 +112,8 @@ export const Sidebar: React.FC = () => {
     },
   ];
 
-  const activeItems = isSuperAdmin ? adminNavItems : brandNavItems;
+  const isSuperAdminView = currentUser?.role === 'super_admin' && isSuperAdmin;
+  const activeItems = isSuperAdminView ? adminNavItems : brandNavItems;
 
   return (
     <aside className="w-64 border-r border-white/[0.06] bg-[#080d19]/60 backdrop-blur-xl flex flex-col justify-between shrink-0 min-h-[calc(100vh-4rem)]">
@@ -247,6 +250,14 @@ export const Sidebar: React.FC = () => {
                 {currentPlan.scanFrequencyLabel}
               </span>
             </div>
+
+            <button
+              onClick={() => setIsUpgradeModalOpen(true)}
+              className="w-full mt-1.5 py-1.5 rounded-xl bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              Change / Buy Plan
+            </button>
           </div>
         ) : (
           <div className="p-3.5 rounded-2xl glass-card space-y-2">

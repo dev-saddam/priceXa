@@ -19,10 +19,19 @@ import { AutoMatchModal } from '@/components/AutoMatchModal';
 import { AddCompetitorModal } from '@/components/AddCompetitorModal';
 import { RegisterBrandModal } from '@/components/RegisterBrandModal';
 import { CandidateMatchSelectorModal } from '@/components/CandidateMatchSelectorModal';
+import { AuthView } from '@/components/AuthView';
+import { UpgradePlanModal } from '@/components/UpgradePlanModal';
+import { SuspendedAccountNotice } from '@/components/SuspendedAccountNotice';
 import { Product } from '@/types';
 
 function AppContent() {
-  const { activeTab, isSuperAdmin } = useApp();
+  const {
+    activeTab,
+    isSuperAdmin,
+    currentUser,
+    isUpgradeModalOpen,
+    setIsUpgradeModalOpen,
+  } = useApp();
 
   // Modal states
   const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -47,6 +56,10 @@ function AppContent() {
     setTargetProductForCandidate(product);
     setCandidateMatcherOpen(true);
   };
+
+  if (!currentUser) {
+    return <AuthView />;
+  }
 
   const renderActiveView = () => {
     if (
@@ -179,6 +192,13 @@ function AppContent() {
       <RegisterBrandModal
         isOpen={registerBrandModalOpen}
         onClose={() => setRegisterBrandModalOpen(false)}
+      />
+
+      <SuspendedAccountNotice />
+
+      <UpgradePlanModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
       />
     </div>
   );
