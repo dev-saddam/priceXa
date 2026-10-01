@@ -1,4 +1,12 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+// Polyfill WebSocket for Node.js environments < 22
+if (typeof globalThis.WebSocket === 'undefined') {
+  try {
+    globalThis.WebSocket = require('ws');
+  } catch {}
+}
+
 import {
   Tenant,
   Product,
