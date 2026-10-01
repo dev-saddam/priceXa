@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.109.0",
     "cheerio": "^1.2.0",
+    "inngest": "^4.21.0",
     "lucide-react": "^1.49.0",
     "next": "16.3.7",
     "react": "19.2.8",

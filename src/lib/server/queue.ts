@@ -15,6 +15,7 @@ import {
   recalculateMarketPositions,
 } from './db';
 import { searchCompetitorProductCandidates, scrapeCompetitorUrl } from './crawler';
+import { inngest, isInngestConfigured } from '@/inngest/client';
 
 const JOBS_FILE = path.join(process.cwd(), 'data', 'jobs.json');
 const MAX_CONCURRENT_WORKERS = 2; // Paced background workers to keep server load low
@@ -53,7 +54,8 @@ memoryJobs = loadJobsFromFile();
 
 /**
  * Enqueue a new background task.
- * Returns immediately in < 5ms without blocking the client or server.
+ * If Inngest is configured (e.g. on Vercel), dispatches to Inngest cloud.
+ * Otherwise, processes in local paced worker pool.
  */
 export async function enqueueJob(
   tenantId: string,
@@ -78,7 +80,34 @@ export async function enqueueJob(
   memoryJobs.unshift(job);
   persistJobsToFile();
 
-  // Trigger worker asynchronously on next event loop tick
+  // If Inngest is configured, dispatch event to Inngest serverless runner
+  if (isInngestConfigured()) {
+    try {
+      const eventName =
+        type === 'search_candidates'
+          ? 'pricexa/candidates.search'
+          : type === 'batch_auto_match'
+          ? 'pricexa/catalog.automatch'
+          : 'pricexa/scan.daily';
+
+      await inngest.send({
+        name: eventName,
+        data: {
+          jobId: job.id,
+          tenantId,
+          ...payload,
+        },
+      });
+    } catch (err) {
+      console.warn('[Inngest] Failed sending event, falling back to local runner:', err);
+      setImmediate(() => {
+        processNextJob();
+      });
+    }
+    return job;
+  }
+
+  // Trigger local worker asynchronously on next event loop tick
   setImmediate(() => {
     processNextJob();
   });

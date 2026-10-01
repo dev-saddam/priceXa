@@ -20,6 +20,28 @@ import {
   INITIAL_NOTIFICATIONS,
   INITIAL_SCAN_JOBS,
 } from '@/data/mockData';
+import {
+  isSupabaseConfigured,
+  fetchSupabaseTenants,
+  updateSupabaseTenant,
+  insertSupabaseTenant,
+  fetchSupabaseProducts,
+  insertSupabaseProduct,
+  updateSupabaseProduct,
+  deleteSupabaseProduct,
+  fetchSupabaseCompetitors,
+  insertSupabaseCompetitor,
+  updateSupabaseCompetitor,
+  deleteSupabaseCompetitor,
+  fetchSupabaseMatches,
+  saveSupabaseMatches,
+  fetchSupabaseAlertRules,
+  fetchSupabaseNotifications,
+  insertSupabaseNotification,
+  fetchSupabaseScanJobs,
+  insertSupabaseScanJob,
+  fetchSupabasePlans,
+} from './supabase';
 
 export interface DatabaseSchema {
   tenants: Tenant[];
@@ -83,6 +105,44 @@ function ensureDbFile(): DatabaseSchema {
 }
 
 export async function getDb(): Promise<DatabaseSchema> {
+  if (isSupabaseConfigured()) {
+    try {
+      const [
+        tenants,
+        products,
+        competitors,
+        matches,
+        alertRules,
+        notifications,
+        scanJobs,
+        plans,
+      ] = await Promise.all([
+        fetchSupabaseTenants(),
+        fetchSupabaseProducts(),
+        fetchSupabaseCompetitors(),
+        fetchSupabaseMatches(),
+        fetchSupabaseAlertRules(),
+        fetchSupabaseNotifications(),
+        fetchSupabaseScanJobs(),
+        fetchSupabasePlans(),
+      ]);
+
+      return {
+        tenants: tenants.length > 0 ? tenants : INITIAL_TENANTS,
+        products,
+        competitors,
+        matches,
+        alertRules,
+        notifications,
+        scanJobs,
+        plans: plans.length > 0 ? plans : INITIAL_PLANS,
+        lastUpdated: new Date().toISOString(),
+      };
+    } catch (err) {
+      console.warn('[Supabase] Error loading from cloud, falling back to local file store:', err);
+    }
+  }
+
   return ensureDbFile();
 }
 
@@ -129,6 +189,14 @@ export async function addProduct(
     isSearchingCompetitors: true,
   };
 
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseProduct(newProduct);
+    } catch (err) {
+      console.warn('[Supabase] addProduct error:', err);
+    }
+  }
+
   db.products.unshift(newProduct);
   await saveDb(db);
   await recalculateMarketPositions(newProduct.tenantId);
@@ -139,6 +207,14 @@ export async function updateProduct(
   id: string,
   updates: Partial<Product>
 ): Promise<Product | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      await updateSupabaseProduct(id, updates);
+    } catch (err) {
+      console.warn('[Supabase] updateProduct error:', err);
+    }
+  }
+
   const db = await getDb();
   const index = db.products.findIndex((p) => p.id === id);
   if (index === -1) return null;
@@ -151,6 +227,14 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      await deleteSupabaseProduct(id);
+    } catch (err) {
+      console.warn('[Supabase] deleteProduct error:', err);
+    }
+  }
+
   const db = await getDb();
   const prod = db.products.find((p) => p.id === id);
   if (!prod) return false;
@@ -266,12 +350,28 @@ export async function addCompetitor(
     lastScrapedAt: 'Never',
   };
 
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseCompetitor(newComp);
+    } catch (err) {
+      console.warn('[Supabase] addCompetitor error:', err);
+    }
+  }
+
   db.competitors.push(newComp);
   await saveDb(db);
   return newComp;
 }
 
 export async function deleteCompetitor(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      await deleteSupabaseCompetitor(id);
+    } catch (err) {
+      console.warn('[Supabase] deleteCompetitor error:', err);
+    }
+  }
+
   const db = await getDb();
   const comp = db.competitors.find((c) => c.id === id);
   if (!comp) return false;
@@ -304,6 +404,14 @@ export async function saveProductMatches(
   productId: string,
   newMatches: CompetitorProductMatch[]
 ): Promise<CompetitorProductMatch[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      await saveSupabaseMatches(tenantId, productId, newMatches);
+    } catch (err) {
+      console.warn('[Supabase] saveProductMatches error:', err);
+    }
+  }
+
   const db = await getDb();
   // Remove existing matches for this product
   db.matches = db.matches.filter((m) => !(m.productId === productId && m.tenantId === tenantId));
@@ -377,6 +485,14 @@ export async function getTenants(): Promise<Tenant[]> {
 }
 
 export async function addTenant(tenant: Tenant): Promise<Tenant> {
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseTenant(tenant);
+    } catch (err) {
+      console.warn('[Supabase] addTenant error:', err);
+    }
+  }
+
   const db = await getDb();
   db.tenants.push(tenant);
   await saveDb(db);
@@ -384,6 +500,14 @@ export async function addTenant(tenant: Tenant): Promise<Tenant> {
 }
 
 export async function updateTenant(id: string, updates: Partial<Tenant>): Promise<Tenant | null> {
+  if (isSupabaseConfigured()) {
+    try {
+      await updateSupabaseTenant(id, updates);
+    } catch (err) {
+      console.warn('[Supabase] updateTenant error:', err);
+    }
+  }
+
   const db = await getDb();
   const index = db.tenants.findIndex((t) => t.id === id);
   if (index === -1) return null;
