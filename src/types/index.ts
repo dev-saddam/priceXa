@@ -255,6 +255,7 @@ export interface BackgroundJob {
     alertsTriggered?: number;
     matchesSaved?: number;
     durationMs?: number;
+    [key: string]: any;
   };
   errors?: string[];
   createdAt: string;

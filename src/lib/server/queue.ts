@@ -16,6 +16,13 @@ import {
 } from './db';
 import { searchCompetitorProductCandidates, scrapeCompetitorUrl } from './crawler';
 import { inngest, isInngestConfigured } from '@/inngest/client';
+import {
+  isSupabaseConfigured,
+  insertSupabaseJob,
+  updateSupabaseJob,
+  fetchSupabaseJob,
+  fetchSupabaseJobs,
+} from './supabase';
 
 const JOBS_FILE = path.join(process.cwd(), 'data', 'jobs.json');
 const MAX_CONCURRENT_WORKERS = 2; // Paced background workers to keep server load low
@@ -34,7 +41,7 @@ function loadJobsFromFile(): BackgroundJob[] {
       return JSON.parse(raw);
     }
   } catch (err) {
-    console.warn('Error reading jobs.json:', err);
+    // In serverless / read-only environment, return empty array
   }
   return [];
 }
@@ -44,8 +51,21 @@ function persistJobsToFile() {
     const dir = path.dirname(JOBS_FILE);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(JOBS_FILE, JSON.stringify(memoryJobs.slice(0, 100), null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Failed writing jobs.json:', err);
+  } catch {
+    // Gracefully ignore filesystem write limitations on serverless platforms (Vercel)
+  }
+}
+
+// Helper to keep both in-memory cache and Supabase updated in sync
+export async function syncJobState(job: BackgroundJob, updates: Partial<BackgroundJob>): Promise<void> {
+  Object.assign(job, updates);
+  persistJobsToFile();
+  if (isSupabaseConfigured()) {
+    try {
+      await updateSupabaseJob(job.id, updates);
+    } catch (err) {
+      console.warn('[Queue] Failed syncing job update to Supabase:', err);
+    }
   }
 }
 
@@ -54,8 +74,7 @@ memoryJobs = loadJobsFromFile();
 
 /**
  * Enqueue a new background task.
- * If Inngest is configured (e.g. on Vercel), dispatches to Inngest cloud.
- * Otherwise, processes in local paced worker pool.
+ * Persists in Supabase, dispatches to Inngest, and ensures execution.
  */
 export async function enqueueJob(
   tenantId: string,
@@ -80,7 +99,15 @@ export async function enqueueJob(
   memoryJobs.unshift(job);
   persistJobsToFile();
 
-  // If Inngest is configured, dispatch event to Inngest serverless runner
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseJob(job);
+    } catch (err) {
+      console.warn('[Queue] Failed inserting job into Supabase:', err);
+    }
+  }
+
+  // If Inngest is configured, dispatch event to Inngest cloud runner
   if (isInngestConfigured()) {
     try {
       const eventName =
@@ -88,6 +115,8 @@ export async function enqueueJob(
           ? 'pricexa/candidates.search'
           : type === 'batch_auto_match'
           ? 'pricexa/catalog.automatch'
+          : payload.batchType === 'manual_instant'
+          ? 'pricexa/scan.instant'
           : 'pricexa/scan.daily';
 
       await inngest.send({
@@ -98,16 +127,14 @@ export async function enqueueJob(
           ...payload,
         },
       });
+      console.log(`[Inngest] Sent event ${eventName} with jobId: ${job.id}`);
     } catch (err) {
-      console.warn('[Inngest] Failed sending event, falling back to local runner:', err);
-      setImmediate(() => {
-        processNextJob();
-      });
+      console.warn('[Inngest] Failed sending event to Inngest cloud:', err);
     }
-    return job;
   }
 
   // Trigger local worker asynchronously on next event loop tick
+  // In development, or whenever server is active, this ensures the job executes and finishes reliably!
   setImmediate(() => {
     processNextJob();
   });
@@ -115,25 +142,71 @@ export async function enqueueJob(
   return job;
 }
 
-export function getJob(jobId: string): BackgroundJob | undefined {
-  return memoryJobs.find((j) => j.id === jobId);
+export async function getJob(jobId: string): Promise<BackgroundJob | undefined> {
+  const mem = memoryJobs.find((j) => j.id === jobId);
+  if (mem && mem.status !== 'queued') return mem;
+
+  if (isSupabaseConfigured()) {
+    try {
+      const sbJob = await fetchSupabaseJob(jobId);
+      if (sbJob) {
+        if (mem) {
+          Object.assign(mem, sbJob);
+          return mem;
+        } else {
+          memoryJobs.unshift(sbJob);
+          return sbJob;
+        }
+      }
+    } catch (err) {
+      console.warn('[Queue] Error fetching job from Supabase:', err);
+    }
+  }
+
+  return mem;
 }
 
-export function getJobs(tenantId?: string): BackgroundJob[] {
-  if (tenantId) {
-    return memoryJobs.filter((j) => j.tenantId === tenantId);
+export async function getJobs(tenantId?: string): Promise<BackgroundJob[]> {
+  let combined = [...memoryJobs];
+
+  if (isSupabaseConfigured()) {
+    try {
+      const sbJobs = await fetchSupabaseJobs(tenantId);
+      if (sbJobs && sbJobs.length > 0) {
+        const memMap = new Map(combined.map((j) => [j.id, j]));
+        for (const sbJob of sbJobs) {
+          const mem = memMap.get(sbJob.id);
+          if (!mem) {
+            combined.push(sbJob);
+            memMap.set(sbJob.id, sbJob);
+          } else if (mem.status === 'queued' && sbJob.status !== 'queued') {
+            memMap.set(sbJob.id, sbJob);
+          } else if ((sbJob.progress || 0) > (mem.progress || 0)) {
+            memMap.set(sbJob.id, sbJob);
+          }
+        }
+        combined = Array.from(memMap.values());
+      }
+    } catch (err) {
+      console.warn('[Queue] Error fetching jobs from Supabase:', err);
+    }
   }
-  return memoryJobs;
+
+  if (tenantId) {
+    return combined.filter((j) => j.tenantId === tenantId);
+  }
+  return combined;
 }
 
 export function cancelJob(jobId: string): boolean {
   const job = memoryJobs.find((j) => j.id === jobId);
   if (!job) return false;
   if (job.status === 'queued' || job.status === 'processing') {
-    job.status = 'cancelled';
-    job.currentTaskDescription = 'Cancelled by user';
-    job.completedAt = new Date().toISOString();
-    persistJobsToFile();
+    syncJobState(job, {
+      status: 'cancelled',
+      currentTaskDescription: 'Cancelled by user',
+      completedAt: new Date().toISOString(),
+    });
     return true;
   }
   return false;
@@ -170,10 +243,11 @@ async function processNextJob() {
   }
 
   activeWorkersCount++;
-  nextJob.status = 'processing';
-  nextJob.startedAt = new Date().toISOString();
-  nextJob.currentTaskDescription = 'Worker picked up job. Starting background execution...';
-  persistJobsToFile();
+  await syncJobState(nextJob, {
+    status: 'processing',
+    startedAt: new Date().toISOString(),
+    currentTaskDescription: 'Worker picked up job. Starting background execution...',
+  });
 
   const startTime = Date.now();
 
@@ -186,20 +260,24 @@ async function processNextJob() {
       await handleDailyScanJob(nextJob);
     }
 
-    nextJob.status = 'completed';
-    nextJob.progress = 100;
-    nextJob.completedAt = new Date().toISOString();
-    nextJob.currentTaskDescription = 'Finished successfully in background';
+    await syncJobState(nextJob, {
+      status: 'completed',
+      progress: 100,
+      completedAt: new Date().toISOString(),
+      currentTaskDescription: 'Finished successfully in background',
+    });
   } catch (err: any) {
     console.error(`Error processing background job ${nextJob.id}:`, err);
-    nextJob.status = 'failed';
-    nextJob.errors = [err.message || 'Unknown worker error'];
-    nextJob.currentTaskDescription = `Failed: ${err.message || 'Error occurred'}`;
-    nextJob.completedAt = new Date().toISOString();
+    await syncJobState(nextJob, {
+      status: 'failed',
+      errors: [err.message || 'Unknown worker error'],
+      currentTaskDescription: `Failed: ${err.message || 'Error occurred'}`,
+      completedAt: new Date().toISOString(),
+    });
   } finally {
     if (!nextJob.resultSummary) nextJob.resultSummary = {};
     nextJob.resultSummary.durationMs = Date.now() - startTime;
-    persistJobsToFile();
+    await syncJobState(nextJob, { resultSummary: nextJob.resultSummary });
     activeWorkersCount--;
 
     // Pick next queued job if available
@@ -229,8 +307,7 @@ async function handleSearchCandidatesJob(job: BackgroundJob) {
   const currency = tenant?.currency || 'USD';
 
   const competitors = (await getCompetitors(tenantId)).filter((c) => c.status === 'active');
-  job.totalItems = competitors.length;
-  persistJobsToFile();
+  await syncJobState(job, { totalItems: competitors.length });
 
   const groups = [];
 
@@ -238,25 +315,27 @@ async function handleSearchCandidatesJob(job: BackgroundJob) {
     if (job.status === 'cancelled') return;
 
     const comp = competitors[i];
-    job.currentTaskDescription = `[${i + 1}/${competitors.length}] Searching Google & store listings on ${comp.name}...`;
-    job.progress = Math.round(((i + 0.2) / competitors.length) * 100);
-    persistJobsToFile();
+    await syncJobState(job, {
+      currentTaskDescription: `[${i + 1}/${competitors.length}] Searching Google & store listings on ${comp.name}...`,
+      progress: Math.round(((i + 0.2) / competitors.length) * 100),
+    });
 
     const group = await searchCompetitorProductCandidates(product, comp, country, currency);
     groups.push(group);
 
-    job.processedItems = i + 1;
-    job.progress = Math.round(((i + 1) / competitors.length) * 100);
-    persistJobsToFile();
+    await syncJobState(job, {
+      processedItems: i + 1,
+      progress: Math.round(((i + 1) / competitors.length) * 100),
+    });
 
     // Gentle pacing between store queries to prevent server load spikes
     await sleep(REQUEST_PACING_MS);
   }
 
-  job.resultSummary = {
-    matchesSaved: groups.length,
-  };
-  job.payload.results = groups;
+  await syncJobState(job, {
+    resultSummary: { matchesSaved: groups.length },
+    payload: { ...job.payload, results: groups },
+  });
 }
 
 /**
@@ -275,8 +354,7 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
     : products;
 
   const competitors = (await getCompetitors(tenantId)).filter((c) => c.status === 'active');
-  job.totalItems = targetProducts.length;
-  persistJobsToFile();
+  await syncJobState(job, { totalItems: targetProducts.length });
 
   let totalMatchesSaved = 0;
 
@@ -284,9 +362,10 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
     if (job.status === 'cancelled') return;
 
     const prod = targetProducts[i];
-    job.currentTaskDescription = `[${i + 1}/${targetProducts.length}] Auto-matching "${prod.name}" across ${competitors.length} stores...`;
-    job.progress = Math.round((i / targetProducts.length) * 100);
-    persistJobsToFile();
+    await syncJobState(job, {
+      currentTaskDescription: `[${i + 1}/${targetProducts.length}] Auto-matching "${prod.name}" across ${competitors.length} stores...`,
+      progress: Math.round((i / targetProducts.length) * 100),
+    });
 
     const newMatches: CompetitorProductMatch[] = [];
 
@@ -313,7 +392,7 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
           priceDiff: diff,
           priceDiffPercent: diffPercent,
           stockStatus: topCand.stockStatus,
-          currency: 'USD',
+          currency: currency || 'USD',
           lastScrapedAt: 'Just now',
           priceHistory: [{ timestamp: 'Today', price: topCand.price, stockStatus: topCand.stockStatus }],
           status: 'confirmed',
@@ -330,19 +409,22 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
       totalMatchesSaved += newMatches.length;
     }
 
-    job.processedItems = i + 1;
-    job.progress = Math.round(((i + 1) / targetProducts.length) * 100);
-    persistJobsToFile();
+    await syncJobState(job, {
+      processedItems: i + 1,
+      progress: Math.round(((i + 1) / targetProducts.length) * 100),
+    });
 
     await sleep(REQUEST_PACING_MS);
   }
 
   await recalculateMarketPositions(tenantId);
 
-  job.resultSummary = {
-    productsScanned: targetProducts.length,
-    matchesSaved: totalMatchesSaved,
-  };
+  await syncJobState(job, {
+    resultSummary: {
+      productsScanned: targetProducts.length,
+      matchesSaved: totalMatchesSaved,
+    },
+  });
 }
 
 /**
@@ -356,8 +438,7 @@ async function handleDailyScanJob(job: BackgroundJob) {
   const db = await getDb();
 
   const confirmedMatches = matches.filter((m) => m.status === 'confirmed' && m.competitorProductUrl);
-  job.totalItems = confirmedMatches.length;
-  persistJobsToFile();
+  await syncJobState(job, { totalItems: confirmedMatches.length });
 
   let priceChangesFound = 0;
   let stockChangesFound = 0;
@@ -378,9 +459,10 @@ async function handleDailyScanJob(job: BackgroundJob) {
     const product = products.find((p) => p.id === match.productId);
     const competitor = competitors.find((c) => c.id === match.competitorId);
 
-    job.currentTaskDescription = `[${i + 1}/${confirmedMatches.length}] Scraping ${competitor?.name || 'competitor'} URL for ${product?.name || 'SKU'}...`;
-    job.progress = Math.round((i / confirmedMatches.length) * 100);
-    persistJobsToFile();
+    await syncJobState(job, {
+      currentTaskDescription: `[${i + 1}/${confirmedMatches.length}] Scraping ${competitor?.name || 'competitor'} URL for ${product?.name || 'SKU'}...`,
+      progress: Math.round((i / confirmedMatches.length) * 100),
+    });
 
     if (product && competitor) {
       try {
@@ -460,9 +542,10 @@ async function handleDailyScanJob(job: BackgroundJob) {
       }
     }
 
-    job.processedItems = i + 1;
-    job.progress = Math.round(((i + 1) / confirmedMatches.length) * 100);
-    persistJobsToFile();
+    await syncJobState(job, {
+      processedItems: i + 1,
+      progress: Math.round(((i + 1) / confirmedMatches.length) * 100),
+    });
 
     // Pacing delay between requests to keep server load gentle
     await sleep(REQUEST_PACING_MS);
@@ -489,12 +572,14 @@ async function handleDailyScanJob(job: BackgroundJob) {
   };
   await addScanJob(scanJob);
 
-  job.resultSummary = {
-    productsScanned: products.length,
-    priceChangesFound,
-    stockChangesFound,
-    alertsTriggered,
-  };
+  await syncJobState(job, {
+    resultSummary: {
+      productsScanned: products.length,
+      priceChangesFound,
+      stockChangesFound,
+      alertsTriggered,
+    },
+  });
 }
 
 /**

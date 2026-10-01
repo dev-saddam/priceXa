@@ -11,6 +11,7 @@ import {
 } from '@/lib/server/db';
 import { searchCompetitorProductCandidates, scrapeCompetitorUrl } from '@/lib/server/crawler';
 import { CompetitorProductMatch, ScanJob } from '@/types';
+import { isSupabaseConfigured, updateSupabaseJob } from '@/lib/server/supabase';
 
 /**
  * Inngest Function: Search Competitor Product Candidates
@@ -24,7 +25,16 @@ export const searchCandidatesFunction = inngest.createFunction(
     triggers: [{ event: 'pricexa/candidates.search' }],
   },
   async ({ event, step }: any) => {
-    const { productId, tenantId } = event.data;
+    const { productId, tenantId, jobId } = event.data;
+
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'processing',
+        progress: 10,
+        currentTaskDescription: 'Inngest worker started candidate search across competitor stores...',
+        startedAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     const { product, competitors, country, currency } = await step.run('load-product-and-competitors', async () => {
       const prod = await getProductById(productId);
@@ -51,6 +61,16 @@ export const searchCandidatesFunction = inngest.createFunction(
       groups.push(group);
     }
 
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'completed',
+        progress: 100,
+        currentTaskDescription: `Finished candidate search across ${competitors.length} stores`,
+        completedAt: new Date().toISOString(),
+        resultSummary: { matchesSaved: groups.length },
+      }).catch(() => {});
+    }
+
     return {
       productId,
       tenantId,
@@ -72,7 +92,16 @@ export const batchAutoMatchFunction = inngest.createFunction(
     triggers: [{ event: 'pricexa/catalog.automatch' }],
   },
   async ({ event, step }: any) => {
-    const { tenantId, productIds } = event.data;
+    const { tenantId, productIds, jobId } = event.data;
+
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'processing',
+        progress: 5,
+        currentTaskDescription: 'Inngest worker started batch auto-matching across stores...',
+        startedAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     const { targetProducts, competitors, country, currency } = await step.run(
       'load-catalog-and-stores',
@@ -152,11 +181,33 @@ export const batchAutoMatchFunction = inngest.createFunction(
       });
 
       totalMatchesSaved += matchesCount;
+
+      if (jobId && isSupabaseConfigured()) {
+        const pct = Math.round(((i + 1) / targetProducts.length) * 100);
+        await updateSupabaseJob(jobId, {
+          progress: pct,
+          processedItems: i + 1,
+          currentTaskDescription: `Auto-matched ${i + 1}/${targetProducts.length} products across stores`,
+        }).catch(() => {});
+      }
     }
 
     await step.run('recalculate-positions', async () => {
       await recalculateMarketPositions(tenantId);
     });
+
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'completed',
+        progress: 100,
+        currentTaskDescription: `Finished batch auto-matching ${targetProducts.length} products (${totalMatchesSaved} matches saved)`,
+        completedAt: new Date().toISOString(),
+        resultSummary: {
+          productsScanned: targetProducts.length,
+          matchesSaved: totalMatchesSaved,
+        },
+      }).catch(() => {});
+    }
 
     return {
       tenantId,
@@ -179,11 +230,31 @@ export const dailyScanFunction = inngest.createFunction(
       { event: 'pricexa/scan.daily' },
     ],
   },
-  async ({ step }: any) => {
+  async ({ event, step }: any) => {
+    const jobId = event?.data?.jobId;
+    const singleTenantId = event?.data?.tenantId;
+
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'processing',
+        progress: 10,
+        currentTaskDescription: 'Inngest worker started scheduled crawl sweep...',
+        startedAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
+
     const tenants = await step.run('get-active-tenants', async () => {
       const all = await getTenants();
-      return all.filter((t) => t.planStatus === 'active');
+      const active = all.filter((t) => t.planStatus === 'active');
+      if (singleTenantId) {
+        const matched = active.filter((t) => t.id === singleTenantId);
+        return matched.length > 0 ? matched : active;
+      }
+      return active;
     });
+
+    let totalPriceChanges = 0;
+    let totalStockChanges = 0;
 
     for (const tenant of tenants) {
       await step.run(`scan-tenant-${tenant.id}`, async () => {
@@ -216,6 +287,9 @@ export const dailyScanFunction = inngest.createFunction(
           } catch {}
         }
 
+        totalPriceChanges += priceChanges;
+        totalStockChanges += stockChanges;
+
         const scanJob: ScanJob = {
           id: `scan-${Date.now()}-${tenant.id}`,
           tenantId: tenant.id,
@@ -243,7 +317,21 @@ export const dailyScanFunction = inngest.createFunction(
       });
     }
 
-    return { completedTenants: tenants.length };
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'completed',
+        progress: 100,
+        currentTaskDescription: `Finished scheduled crawl across ${tenants.length} tenants (${totalPriceChanges} price updates detected)`,
+        completedAt: new Date().toISOString(),
+        resultSummary: {
+          tenantsScanned: tenants.length,
+          priceChangesFound: totalPriceChanges,
+          stockChangesFound: totalStockChanges,
+        },
+      }).catch(() => {});
+    }
+
+    return { completedTenants: tenants.length, totalPriceChanges, totalStockChanges };
   }
 );
 
@@ -257,7 +345,16 @@ export const instantScanFunction = inngest.createFunction(
     triggers: [{ event: 'pricexa/scan.instant' }],
   },
   async ({ event, step }: any) => {
-    const { tenantId } = event.data;
+    const { tenantId, jobId } = event.data;
+
+    if (jobId && isSupabaseConfigured()) {
+      await updateSupabaseJob(jobId, {
+        status: 'processing',
+        progress: 10,
+        currentTaskDescription: 'Inngest worker started instant catalog price scan...',
+        startedAt: new Date().toISOString(),
+      }).catch(() => {});
+    }
 
     return await step.run('execute-instant-scan', async () => {
       const matches = await getMatches(tenantId);
@@ -313,6 +410,22 @@ export const instantScanFunction = inngest.createFunction(
 
       await addScanJob(scanJob);
       await recalculateMarketPositions(tenantId);
+
+      if (jobId && isSupabaseConfigured()) {
+        await updateSupabaseJob(jobId, {
+          status: 'completed',
+          progress: 100,
+          currentTaskDescription: `Instant manual scan completed: ${matches.length} URLs scraped (${priceChanges} price changes detected)`,
+          completedAt: new Date().toISOString(),
+          resultSummary: {
+            productsScanned: products.length,
+            priceChangesFound: priceChanges,
+            stockChangesFound: stockChanges,
+            alertsTriggered: priceChanges,
+            durationMs: Date.now() - startTime,
+          },
+        }).catch(() => {});
+      }
 
       return scanJob;
     });

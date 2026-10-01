@@ -1,5 +1,55 @@
 [
   {
+    "id": "job-1790840772594-oogc",
+    "tenantId": "tenant-apex",
+    "type": "daily_scan",
+    "title": "Live Instant Scan Crawl",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "batchType": "manual_instant"
+    },
+    "createdAt": "2026-10-01T07:46:12.594Z",
+    "startedAt": "2026-10-01T07:46:17.235Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "priceChangesFound": 1,
+      "stockChangesFound": 0,
+      "alertsTriggered": 1,
+      "durationMs": 4131
+    },
+    "completedAt": "2026-10-01T07:46:21.905Z"
+  },
+  {
+    "id": "job-1790840469376-ghhz",
+    "tenantId": "tenant-apex",
+    "type": "daily_scan",
+    "title": "Test Instant Scan",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "batchType": "manual_instant"
+    },
+    "createdAt": "2026-10-01T07:41:09.376Z",
+    "startedAt": "2026-10-01T07:41:11.209Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "priceChangesFound": 1,
+      "stockChangesFound": 0,
+      "alertsTriggered": 1,
+      "durationMs": 6469
+    },
+    "completedAt": "2026-10-01T07:41:17.586Z"
+  },
+  {
     "id": "job-1790772489293-c5j0",
     "tenantId": "tenant-apex",
     "type": "batch_auto_match",

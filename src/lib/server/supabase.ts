@@ -735,3 +735,85 @@ export async function fetchSupabasePlans(): Promise<SubscriptionPlan[]> {
   if (error) return [];
   return (data || []).map(mapPlanFromDb);
 }
+
+// -----------------------------------------------------------------------------
+// Background Jobs Operations
+// -----------------------------------------------------------------------------
+
+function mapBackgroundJobFromDb(row: any): BackgroundJob {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    type: row.type,
+    title: row.title,
+    status: row.status || 'queued',
+    progress: Number(row.progress) || 0,
+    totalItems: Number(row.total_items) || 1,
+    processedItems: Number(row.processed_items) || 0,
+    currentTaskDescription: row.current_task_description || '',
+    payload: row.payload || {},
+    resultSummary: row.result_summary || {},
+    errors: row.errors || [],
+    startedAt: row.started_at,
+    completedAt: row.completed_at,
+    createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
+  };
+}
+
+export async function insertSupabaseJob(job: BackgroundJob): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const row = {
+    id: job.id,
+    tenant_id: job.tenantId,
+    type: job.type,
+    title: job.title,
+    status: job.status,
+    progress: job.progress,
+    total_items: job.totalItems,
+    processed_items: job.processedItems,
+    current_task_description: job.currentTaskDescription,
+    payload: job.payload || {},
+    result_summary: job.resultSummary || {},
+    errors: job.errors || [],
+    started_at: job.startedAt,
+    completed_at: job.completedAt,
+  };
+  await sb.from('background_jobs').upsert(row);
+}
+
+export async function updateSupabaseJob(id: string, updates: Partial<BackgroundJob>): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+  const dbRow: any = {};
+  if (updates.status !== undefined) dbRow.status = updates.status;
+  if (updates.progress !== undefined) dbRow.progress = updates.progress;
+  if (updates.processedItems !== undefined) dbRow.processed_items = updates.processedItems;
+  if (updates.totalItems !== undefined) dbRow.total_items = updates.totalItems;
+  if (updates.currentTaskDescription !== undefined) dbRow.current_task_description = updates.currentTaskDescription;
+  if (updates.resultSummary !== undefined) dbRow.result_summary = updates.resultSummary;
+  if (updates.errors !== undefined) dbRow.errors = updates.errors;
+  if (updates.startedAt !== undefined) dbRow.started_at = updates.startedAt;
+  if (updates.completedAt !== undefined) dbRow.completed_at = updates.completedAt;
+
+  await sb.from('background_jobs').update(dbRow).eq('id', id);
+}
+
+export async function fetchSupabaseJob(id: string): Promise<BackgroundJob | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+  const { data, error } = await sb.from('background_jobs').select('*').eq('id', id).single();
+  if (error || !data) return null;
+  return mapBackgroundJobFromDb(data);
+}
+
+export async function fetchSupabaseJobs(tenantId?: string): Promise<BackgroundJob[]> {
+  const sb = getSupabase();
+  if (!sb) return [];
+  let query = sb.from('background_jobs').select('*');
+  if (tenantId) query = query.eq('tenant_id', tenantId);
+  const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+  if (error || !data) return [];
+  return data.map(mapBackgroundJobFromDb);
+}
+

@@ -1,17 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getJobs, enqueueJob, getQueueMetrics } from '@/lib/server/queue';
-
-export async function GET(req: Request) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const tenantId = searchParams.get('tenantId') || undefined;
-    const jobs = await getJobs(tenantId);
-    const metrics = getQueueMetrics();
-    return NextResponse.json({ success: true, jobs, metrics });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
-  }
-}
+import { enqueueJob } from '@/lib/server/queue';
 
 export async function POST(req: Request) {
   try {

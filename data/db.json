@@ -6,10 +6,10 @@
       "slug": "apex-athletics",
       "logo": "⚡",
       "industry": "Sportswear & Footwear",
-      "country": "UK",
-      "countryCode": "UK",
-      "currency": "GBP",
-      "currencySymbol": "£",
+      "country": "IN",
+      "countryCode": "IN",
+      "currency": "INR",
+      "currencySymbol": "₹",
       "planId": "enterprise",
       "planStatus": "active",
       "scanFrequency": "hourly",
@@ -84,27 +84,25 @@
   ],
   "products": [
     {
-      "id": "prod-1790772489272-bgsj",
+      "id": "prod-1790839769006-fak6",
       "tenantId": "tenant-apex",
-      "name": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
-      "brand": "SKECHERS",
-      "code": "T-125",
+      "name": "SKX AERO BURST",
+      "brand": "skechers",
+      "code": "TEST-01",
       "category": "Footwear",
-      "mrp": 6000,
-      "currentPrice": 5999,
-      "costPrice": 5000,
+      "mrp": 17999,
+      "currentPrice": 17999,
+      "costPrice": 9000,
       "minMarginPercent": 30,
       "stockStatus": "in_stock",
       "stockCount": 50,
       "imageUrl": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
       "productUrl": "",
       "createdAt": "2026-10-01",
-      "matchesCount": 2,
-      "marketPosition": "expensive",
-      "lowestCompetitorPrice": 5599,
-      "averageCompetitorPrice": 6088.65,
-      "matchingStatus": "fully_matched",
-      "isSearchingCompetitors": false
+      "matchesCount": 0,
+      "marketPosition": "unmatched",
+      "matchingStatus": "searching",
+      "isSearchingCompetitors": true
     }
   ],
   "competitors": [
@@ -201,25 +199,25 @@
   ],
   "matches": [
     {
-      "id": "match-bg-1790772508261-comp-amazon-f8d4",
+      "id": "match-bg-1790839793861-comp-amazon-osca",
       "tenantId": "tenant-apex",
-      "productId": "prod-1790772489272-bgsj",
+      "productId": "prod-1790839769006-fak6",
       "competitorId": "comp-amazon",
-      "competitorName": "Amazon Marketplace",
-      "competitorProductTitle": "Amazon.com | Skechers Sport Slip-Ins RF: D'Lux Walker 2.0 Men's Sneaker, 9 2E US, Grey-Charcoal | Walking",
-      "competitorProductUrl": "https://amazon.com/dp/B0DB2XPLQZ",
-      "matchConfidence": 91,
+      "competitorName": "Amazon Marketplace (UK)",
+      "competitorProductTitle": "SkechersMens Skx Aero Burst Sneaker",
+      "competitorProductUrl": "https://amazon.in/dp/B0FF2QS2VT",
+      "matchConfidence": 100,
       "matchType": "title_search",
-      "currentPrice": 6578.29,
-      "previousPrice": 6578.29,
-      "priceDiff": 579.29,
-      "priceDiffPercent": 9.7,
+      "currentPrice": 17999,
+      "previousPrice": 17999,
+      "priceDiff": 0,
+      "priceDiffPercent": 0,
       "stockStatus": "in_stock",
       "currency": "USD",
       "lastScrapedAt": "Just now",
       "priceHistory": [
         {
-          "price": 6578.29,
+          "price": 17999,
           "timestamp": "Today",
           "stockStatus": "in_stock"
         }
@@ -227,37 +225,7 @@
       "status": "confirmed",
       "channelType": "marketplace",
       "platform": "amazon",
-      "sellerName": "AMAZON Marketplace"
-    },
-    {
-      "id": "match-bg-1790772511217-comp-1790769054236-du2f-wweq",
-      "tenantId": "tenant-apex",
-      "productId": "prod-1790772489272-bgsj",
-      "competitorId": "comp-1790769054236-du2f",
-      "competitorName": "SKECHERS",
-      "competitorProductTitle": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
-      "competitorProductUrl": "https://www.skechers.in/skechers-slip-ins-rf%3A-d-lux-walker-2.0---rezinate/232446-GYCC.html",
-      "matchConfidence": 100,
-      "matchType": "title_search",
-      "currentPrice": 5599,
-      "previousPrice": 5599,
-      "regularPrice": 7999,
-      "priceDiff": -400,
-      "priceDiffPercent": -6.7,
-      "stockStatus": "in_stock",
-      "currency": "USD",
-      "lastScrapedAt": "Just now",
-      "priceHistory": [
-        {
-          "price": 5599,
-          "timestamp": "Today",
-          "stockStatus": "in_stock"
-        }
-      ],
-      "status": "confirmed",
-      "channelType": "brand_official",
-      "platform": "demandware",
-      "sellerName": "Brand Official Webstore"
+      "sellerName": "AMAZON Verified Buybox"
     }
   ],
   "alertRules": [
@@ -312,6 +280,50 @@
   ],
   "notifications": [
     {
+      "id": "notif-bg-1790840780601-8s6z",
+      "tenantId": "tenant-apex",
+      "ruleId": null,
+      "ruleName": null,
+      "severity": "critical",
+      "title": "Competitor Under-Cut Alert",
+      "message": "Amazon Marketplace (UK) lowered price for SKX AERO BURST to $16697.26, undercutting your price of $17999.00.",
+      "productId": "prod-1790839769006-fak6",
+      "productName": "SKX AERO BURST",
+      "productSku": "TEST-01",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace (UK)",
+      "oldPrice": 17999,
+      "newPrice": 16697.26,
+      "myPrice": 17999,
+      "priceDiffPercent": -7.2,
+      "stockChange": null,
+      "timestamp": "Just now",
+      "read": false,
+      "actionTaken": null
+    },
+    {
+      "id": "notif-bg-1790840476108-6ckp",
+      "tenantId": "tenant-apex",
+      "ruleId": null,
+      "ruleName": null,
+      "severity": "critical",
+      "title": "Competitor Under-Cut Alert",
+      "message": "Amazon Marketplace (UK) lowered price for SKX AERO BURST to $16697.26, undercutting your price of $17999.00.",
+      "productId": "prod-1790839769006-fak6",
+      "productName": "SKX AERO BURST",
+      "productSku": "TEST-01",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace (UK)",
+      "oldPrice": 17999,
+      "newPrice": 16697.26,
+      "myPrice": 17999,
+      "priceDiffPercent": -7.2,
+      "stockChange": null,
+      "timestamp": "Just now",
+      "read": false,
+      "actionTaken": null
+    },
+    {
       "id": "notif-1790835953890",
       "tenantId": "tenant-apex",
       "ruleId": "rule-1",
@@ -330,11 +342,33 @@
       "priceDiffPercent": -6.7,
       "stockChange": null,
       "timestamp": "Today at 08:05 AM",
-      "read": true,
+      "read": false,
       "actionTaken": null
     }
   ],
-  "scanJobs": [],
+  "scanJobs": [
+    {
+      "id": "scan-bg-1790840781609",
+      "tenantId": "tenant-apex",
+      "batchType": "manual_instant",
+      "status": "completed",
+      "startedAt": "01:16 PM",
+      "completedAt": "01:16 PM",
+      "durationMs": 4500,
+      "productsScanned": 1,
+      "competitorPagesCrawled": 1,
+      "priceChangesFound": 1,
+      "stockChangesFound": 0,
+      "alertsTriggered": 1,
+      "logItems": [
+        {
+          "timestamp": "1:16:19 PM",
+          "level": "info",
+          "text": "Background worker started crawler across 1 monitored URLs"
+        }
+      ]
+    }
+  ],
   "plans": [
     {
       "id": "starter",
@@ -398,5 +432,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-10-01T06:28:13.152Z"
+  "lastUpdated": "2026-10-01T07:46:21.742Z"
 }
