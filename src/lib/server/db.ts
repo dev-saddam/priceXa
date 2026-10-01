@@ -38,6 +38,8 @@ import {
   fetchSupabaseAlertRules,
   fetchSupabaseNotifications,
   insertSupabaseNotification,
+  updateSupabaseNotificationRead,
+  markAllSupabaseNotificationsRead,
   fetchSupabaseScanJobs,
   insertSupabaseScanJob,
   fetchSupabasePlans,
@@ -427,6 +429,15 @@ export async function saveProductMatches(
 // ----------------------------------------------------
 
 export async function getNotifications(tenantId?: string): Promise<AlertNotification[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      const sbNotifs = await fetchSupabaseNotifications(tenantId);
+      if (sbNotifs && sbNotifs.length > 0) return sbNotifs;
+    } catch (err) {
+      console.warn('[Supabase] fetchSupabaseNotifications error:', err);
+    }
+  }
+
   const db = await getDb();
   if (tenantId) {
     return db.notifications.filter((n) => n.tenantId === tenantId);
@@ -435,12 +446,28 @@ export async function getNotifications(tenantId?: string): Promise<AlertNotifica
 }
 
 export async function addNotification(notification: AlertNotification): Promise<void> {
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseNotification(notification);
+    } catch (err) {
+      console.warn('[Supabase] insertSupabaseNotification error:', err);
+    }
+  }
+
   const db = await getDb();
   db.notifications.unshift(notification);
   await saveDb(db);
 }
 
 export async function markNotificationRead(id: string): Promise<boolean> {
+  if (isSupabaseConfigured()) {
+    try {
+      await updateSupabaseNotificationRead(id);
+    } catch (err) {
+      console.warn('[Supabase] updateSupabaseNotificationRead error:', err);
+    }
+  }
+
   const db = await getDb();
   const notif = db.notifications.find((n) => n.id === id);
   if (!notif) return false;
@@ -450,6 +477,14 @@ export async function markNotificationRead(id: string): Promise<boolean> {
 }
 
 export async function markAllNotificationsRead(tenantId: string): Promise<void> {
+  if (isSupabaseConfigured()) {
+    try {
+      await markAllSupabaseNotificationsRead(tenantId);
+    } catch (err) {
+      console.warn('[Supabase] markAllSupabaseNotificationsRead error:', err);
+    }
+  }
+
   const db = await getDb();
   db.notifications.forEach((n) => {
     if (n.tenantId === tenantId) n.read = true;

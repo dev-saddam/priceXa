@@ -41,8 +41,9 @@ export const Header: React.FC<HeaderProps> = ({
   const [brandDropdownOpen, setBrandDropdownOpen] = useState(false);
 
   const unreadCount = notifications.filter(
-    (n) => n.tenantId === currentTenant.id && !n.read
+    (n) => (currentUser?.role === 'super_admin' ? true : n.tenantId === currentTenant.id) && !n.read
   ).length;
+  const hasUnread = unreadCount > 0;
 
   return (
     <header className="sticky top-0 z-30 h-16 border-b border-white/[0.06] bg-[#080d19]/85 backdrop-blur-xl px-5 sm:px-7 flex items-center justify-between transition-colors">
@@ -194,15 +195,19 @@ export const Header: React.FC<HeaderProps> = ({
         {/* Notifications Bell */}
         <button
           onClick={onOpenNotifications}
-          className="relative p-2 rounded-xl bg-slate-900/60 border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20 transition-all cursor-pointer"
-          title="Price & Stock Alert Feed"
+          className="relative p-2.5 rounded-xl bg-slate-900/60 border border-white/[0.08] text-slate-300 hover:text-white hover:border-white/20 transition-all cursor-pointer group"
+          title={hasUnread ? `${unreadCount} unread notification${unreadCount !== 1 ? 's' : ''}` : 'Notifications (All caught up)'}
+          aria-label="Notifications"
         >
-          <Bell className="w-4 h-4" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-rose-500 text-[9px] font-extrabold text-white shadow-sm ring-2 ring-[#080d19] animate-pulse">
-              {unreadCount}
-            </span>
-          )}
+          <div className="relative flex items-center justify-center">
+            <Bell className="w-4 h-4 text-slate-300 group-hover:text-white transition-colors" />
+            {hasUnread && (
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-[#080d19]"></span>
+              </span>
+            )}
+          </div>
         </button>
 
         {/* Super Admin Switcher (Super Admin Only) */}

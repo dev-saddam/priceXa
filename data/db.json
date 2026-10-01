@@ -6,6 +6,8 @@
       "slug": "apex-athletics",
       "logo": "⚡",
       "industry": "Sportswear & Footwear",
+      "country": "UK",
+      "countryCode": "UK",
       "currency": "GBP",
       "currencySymbol": "£",
       "planId": "enterprise",
@@ -19,13 +21,11 @@
       "nextScanAt": "Today at 08:00 PM",
       "skuLimit": 10000,
       "competitorLimit": 50,
-      "createdAt": "2025-11-12",
+      "createdAt": "2026-10-01",
       "contactEmail": "pricing-ops@apexathletics.com",
       "webhookUrl": "https://api.apexathletics.com/webhooks/pricing",
       "emailAlertsEnabled": true,
-      "autoRepriceRecommendation": true,
-      "country": "UK",
-      "countryCode": "UK"
+      "autoRepriceRecommendation": true
     },
     {
       "id": "tenant-aura",
@@ -33,6 +33,8 @@
       "slug": "aura-soundworks",
       "logo": "🎧",
       "industry": "Consumer Audio & Tech",
+      "country": "US",
+      "countryCode": "US",
       "currency": "USD",
       "currencySymbol": "$",
       "planId": "growth",
@@ -46,7 +48,7 @@
       "nextScanAt": "Today at 08:00 PM",
       "skuLimit": 1500,
       "competitorLimit": 15,
-      "createdAt": "2026-01-05",
+      "createdAt": "2026-10-01",
       "contactEmail": "director@aurasoundworks.com",
       "webhookUrl": "",
       "emailAlertsEnabled": true,
@@ -58,6 +60,8 @@
       "slug": "lumina-skin",
       "logo": "✨",
       "industry": "Cosmetics & Skincare",
+      "country": "US",
+      "countryCode": "US",
       "currency": "USD",
       "currencySymbol": "$",
       "planId": "starter",
@@ -71,7 +75,7 @@
       "nextScanAt": "Today at 08:00 PM",
       "skuLimit": 250,
       "competitorLimit": 5,
-      "createdAt": "2026-03-10",
+      "createdAt": "2026-10-01",
       "contactEmail": "operations@luminaskin.co",
       "webhookUrl": "",
       "emailAlertsEnabled": false,
@@ -80,6 +84,8 @@
   ],
   "products": [
     {
+      "id": "prod-1790772489272-bgsj",
+      "tenantId": "tenant-apex",
       "name": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
       "brand": "SKECHERS",
       "code": "T-125",
@@ -90,17 +96,15 @@
       "minMarginPercent": 30,
       "stockStatus": "in_stock",
       "stockCount": 50,
-      "productUrl": "",
       "imageUrl": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
-      "tenantId": "tenant-apex",
-      "id": "prod-1790772489272-bgsj",
-      "createdAt": "2026-09-30",
+      "productUrl": "",
+      "createdAt": "2026-10-01",
       "matchesCount": 2,
       "marketPosition": "expensive",
-      "matchingStatus": "fully_matched",
-      "isSearchingCompetitors": false,
       "lowestCompetitorPrice": 5599,
-      "averageCompetitorPrice": 6088.65
+      "averageCompetitorPrice": 6088.65,
+      "matchingStatus": "fully_matched",
+      "isSearchingCompetitors": false
     }
   ],
   "competitors": [
@@ -113,8 +117,11 @@
       "logo": "📦",
       "status": "active",
       "monitoredProductsCount": 2,
+      "searchSelector": null,
       "avgPriceDiffPercent": 4.8,
-      "lastScrapedAt": "Today at 08:02 AM"
+      "lastScrapedAt": "Today at 08:02 AM",
+      "channelType": "marketplace",
+      "platform": "amazon"
     },
     {
       "id": "comp-bestbuy-aura",
@@ -125,8 +132,11 @@
       "logo": "🏷️",
       "status": "active",
       "monitoredProductsCount": 0,
+      "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:03 AM"
+      "lastScrapedAt": "Today at 08:03 AM",
+      "channelType": "marketplace",
+      "platform": "amazon"
     },
     {
       "id": "comp-bhphoto-aura",
@@ -137,8 +147,11 @@
       "logo": "📷",
       "status": "active",
       "monitoredProductsCount": 0,
+      "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:05 AM"
+      "lastScrapedAt": "Today at 08:05 AM",
+      "channelType": "marketplace",
+      "platform": "amazon"
     },
     {
       "id": "comp-sephora",
@@ -149,8 +162,11 @@
       "logo": "💄",
       "status": "active",
       "monitoredProductsCount": 0,
+      "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Yesterday at 08:05 PM"
+      "lastScrapedAt": "Yesterday at 08:05 PM",
+      "channelType": "marketplace",
+      "platform": "amazon"
     },
     {
       "id": "comp-ulta",
@@ -161,21 +177,26 @@
       "logo": "💋",
       "status": "active",
       "monitoredProductsCount": 0,
+      "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Yesterday at 08:07 PM"
+      "lastScrapedAt": "Yesterday at 08:07 PM",
+      "channelType": "marketplace",
+      "platform": "amazon"
     },
     {
+      "id": "comp-1790769054236-du2f",
+      "tenantId": "tenant-apex",
       "name": "SKECHERS",
       "domain": "skechers.co.uk",
       "baseUrl": "https://skechers.co.uk",
       "logo": "🏷️",
-      "channelType": "brand_official",
       "status": "active",
-      "tenantId": "tenant-apex",
-      "id": "comp-1790769054236-du2f",
       "monitoredProductsCount": 1,
+      "searchSelector": null,
       "avgPriceDiffPercent": -6.7,
-      "lastScrapedAt": "Never"
+      "lastScrapedAt": "Never",
+      "channelType": "brand_official",
+      "platform": "amazon"
     }
   ],
   "matches": [
@@ -198,8 +219,8 @@
       "lastScrapedAt": "Just now",
       "priceHistory": [
         {
-          "timestamp": "Today",
           "price": 6578.29,
+          "timestamp": "Today",
           "stockStatus": "in_stock"
         }
       ],
@@ -228,8 +249,8 @@
       "lastScrapedAt": "Just now",
       "priceHistory": [
         {
-          "timestamp": "Today",
           "price": 5599,
+          "timestamp": "Today",
           "stockStatus": "in_stock"
         }
       ],
@@ -250,7 +271,7 @@
       "enabled": true,
       "channel": "both",
       "timesTriggered": 18,
-      "createdAt": "2026-01-20"
+      "createdAt": "2026-10-01"
     },
     {
       "id": "rule-2",
@@ -262,7 +283,7 @@
       "enabled": true,
       "channel": "in_app",
       "timesTriggered": 7,
-      "createdAt": "2026-01-22"
+      "createdAt": "2026-10-01"
     },
     {
       "id": "rule-3",
@@ -274,7 +295,7 @@
       "enabled": true,
       "channel": "both",
       "timesTriggered": 12,
-      "createdAt": "2026-02-01"
+      "createdAt": "2026-10-01"
     },
     {
       "id": "rule-4",
@@ -286,10 +307,33 @@
       "enabled": true,
       "channel": "both",
       "timesTriggered": 9,
-      "createdAt": "2026-02-10"
+      "createdAt": "2026-10-01"
     }
   ],
-  "notifications": [],
+  "notifications": [
+    {
+      "id": "notif-1790835953890",
+      "tenantId": "tenant-apex",
+      "ruleId": "rule-1",
+      "ruleName": "Competitor Under-Cut Alert (> 5%)",
+      "severity": "critical",
+      "title": "Competitor Under-Cut Alert",
+      "message": "SKECHERS lowered price for SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE to £5,599.00, undercutting your price of £5,999.00 (-6.7%).",
+      "productId": "prod-1790772489272-bgsj",
+      "productName": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
+      "productSku": "T-125",
+      "competitorId": "comp-1790769054236-du2f",
+      "competitorName": "SKECHERS",
+      "oldPrice": 5999,
+      "newPrice": 5599,
+      "myPrice": 5999,
+      "priceDiffPercent": -6.7,
+      "stockChange": null,
+      "timestamp": "Today at 08:05 AM",
+      "read": true,
+      "actionTaken": null
+    }
+  ],
   "scanJobs": [],
   "plans": [
     {
@@ -354,5 +398,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-09-30T13:19:07.196Z"
+  "lastUpdated": "2026-10-01T06:28:13.152Z"
 }

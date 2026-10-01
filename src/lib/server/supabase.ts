@@ -560,6 +560,28 @@ export async function insertSupabaseNotification(notif: AlertNotification): Prom
   await sb.from('notifications').insert(row);
 }
 
+export async function updateSupabaseNotificationRead(id: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { error } = await sb.from('notifications').update({ read: true }).eq('id', id);
+  if (error) {
+    console.error('[Supabase] Error marking notification read:', error.message);
+    return false;
+  }
+  return true;
+}
+
+export async function markAllSupabaseNotificationsRead(tenantId: string): Promise<boolean> {
+  const sb = getSupabase();
+  if (!sb) return false;
+  const { error } = await sb.from('notifications').update({ read: true }).eq('tenant_id', tenantId);
+  if (error) {
+    console.error('[Supabase] Error marking all notifications read:', error.message);
+    return false;
+  }
+  return true;
+}
+
 export async function fetchSupabaseScanJobs(tenantId?: string): Promise<ScanJob[]> {
   const sb = getSupabase();
   if (!sb) return [];

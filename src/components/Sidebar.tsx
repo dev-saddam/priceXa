@@ -171,11 +171,19 @@ export const Sidebar: React.FC = () => {
                 }`}
               >
                 <div className="flex items-center gap-2.5">
-                  <Icon
-                    className={`w-4 h-4 transition-colors ${
-                      isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-200'
-                    }`}
-                  />
+                  <div className="relative flex items-center justify-center">
+                    <Icon
+                      className={`w-4 h-4 transition-colors ${
+                        isActive ? 'text-blue-400' : 'text-slate-400 group-hover:text-slate-200'
+                      }`}
+                    />
+                    {item.id === 'alerts' && unreadAlerts > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-1 ring-[#080d19]"></span>
+                      </span>
+                    )}
+                  </div>
                   <span>{item.label}</span>
                 </div>
 
