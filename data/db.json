@@ -101,8 +101,8 @@
       "createdAt": "2026-10-01",
       "matchesCount": 2,
       "marketPosition": "expensive",
-      "lowestCompetitorPrice": 1199,
-      "averageCompetitorPrice": 4599,
+      "lowestCompetitorPrice": 1112.28,
+      "averageCompetitorPrice": 4555.64,
       "matchingStatus": "fully_matched",
       "isSearchingCompetitors": false
     },
@@ -124,8 +124,8 @@
       "createdAt": "2026-10-01",
       "matchesCount": 1,
       "marketPosition": "expensive",
-      "lowestCompetitorPrice": 16999,
-      "averageCompetitorPrice": 16999,
+      "lowestCompetitorPrice": 15769.58,
+      "averageCompetitorPrice": 15769.58,
       "matchingStatus": "partially_matched",
       "isSearchingCompetitors": false
     }
@@ -201,7 +201,7 @@
       "status": "active",
       "monitoredProductsCount": 2,
       "searchSelector": null,
-      "avgPriceDiffPercent": -42.9,
+      "avgPriceDiffPercent": -47,
       "lastScrapedAt": "Today at 08:02 AM",
       "channelType": "marketplace",
       "platform": "amazon"
@@ -233,17 +233,22 @@
       "competitorProductUrl": "https://amazon.in/dp/B0FF2R6BB3",
       "matchConfidence": 100,
       "matchType": "title_search",
-      "currentPrice": 16999,
+      "currentPrice": 15769.58,
       "previousPrice": 16999,
-      "priceDiff": -501,
-      "priceDiffPercent": -2.9,
+      "priceDiff": -1730.42,
+      "priceDiffPercent": -9.9,
       "stockStatus": "in_stock",
       "currency": "INR",
-      "lastScrapedAt": "Just now",
+      "lastScrapedAt": "2026-10-01T09:50:08.400Z",
       "priceHistory": [
         {
           "price": 16999,
           "timestamp": "Today",
+          "stockStatus": "in_stock"
+        },
+        {
+          "price": 15769.58,
+          "timestamp": "2026-10-01T09:50:05.729Z",
           "stockStatus": "in_stock"
         }
       ],
@@ -262,17 +267,22 @@
       "competitorProductUrl": "https://amazon.in/dp/B0CFCNHZD7",
       "matchConfidence": 100,
       "matchType": "title_search",
-      "currentPrice": 1199,
+      "currentPrice": 1112.28,
       "previousPrice": 1199,
-      "priceDiff": -5800,
-      "priceDiffPercent": -82.9,
+      "priceDiff": -5886.72,
+      "priceDiffPercent": -84.1,
       "stockStatus": "in_stock",
       "currency": "INR",
-      "lastScrapedAt": "Just now",
+      "lastScrapedAt": "2026-10-01T09:50:08.662Z",
       "priceHistory": [
         {
           "price": 1199,
           "timestamp": "Today",
+          "stockStatus": "in_stock"
+        },
+        {
+          "price": 1112.28,
+          "timestamp": "2026-10-01T09:50:06.446Z",
           "stockStatus": "in_stock"
         }
       ],
@@ -297,7 +307,7 @@
       "priceDiffPercent": 14.3,
       "stockStatus": "in_stock",
       "currency": "INR",
-      "lastScrapedAt": "Just now",
+      "lastScrapedAt": "2026-10-01T09:50:08.798Z",
       "priceHistory": [
         {
           "price": 7999,
@@ -361,8 +371,132 @@
       "createdAt": "2026-10-01"
     }
   ],
-  "notifications": [],
-  "scanJobs": [],
+  "notifications": [
+    {
+      "id": "notif-cron-1790848206446-bjfc",
+      "tenantId": "tenant-apex",
+      "ruleId": null,
+      "ruleName": null,
+      "severity": "critical",
+      "title": "Competitor Under-Cut Alert",
+      "message": "Amazon Marketplace (UK) lowered price for \"Skechers Slip-ins RF: D'Lux Walker 2.0 - Rezinate\" to ₹1112.28, undercutting your price of ₹6999.00.",
+      "productId": "prod-1790843390262-qr4k",
+      "productName": "Skechers Slip-ins RF: D'Lux Walker 2.0 - Rezinate",
+      "productSku": "232446-GYCC",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace (UK)",
+      "oldPrice": 1199,
+      "newPrice": 1112.28,
+      "myPrice": 6999,
+      "priceDiffPercent": -84.1,
+      "stockChange": null,
+      "timestamp": "Just now",
+      "read": false,
+      "actionTaken": null
+    },
+    {
+      "id": "notif-cron-1790848205729-x9xo",
+      "tenantId": "tenant-apex",
+      "ruleId": null,
+      "ruleName": null,
+      "severity": "critical",
+      "title": "Competitor Under-Cut Alert",
+      "message": "Amazon Marketplace (UK) lowered price for \"SKECHERS AERO SPARK\" to ₹15769.58, undercutting your price of ₹17500.00.",
+      "productId": "prod-1790842639578-6ckr",
+      "productName": "SKECHERS AERO SPARK",
+      "productSku": "TEST-1",
+      "competitorId": "comp-amazon",
+      "competitorName": "Amazon Marketplace (UK)",
+      "oldPrice": 16999,
+      "newPrice": 15769.58,
+      "myPrice": 17500,
+      "priceDiffPercent": -9.9,
+      "stockChange": null,
+      "timestamp": "Just now",
+      "read": false,
+      "actionTaken": null
+    }
+  ],
+  "scanJobs": [
+    {
+      "id": "scan-cron-1790848212002-tenant-aura",
+      "tenantId": "tenant-aura",
+      "batchType": "scheduled_am",
+      "status": "completed",
+      "startedAt": "2026-10-01T09:50:00.968Z",
+      "completedAt": "2026-10-01T09:50:12.002Z",
+      "durationMs": 11034,
+      "productsScanned": 0,
+      "competitorPagesCrawled": 0,
+      "priceChangesFound": 0,
+      "stockChangesFound": 0,
+      "alertsTriggered": 0,
+      "logItems": [
+        {
+          "timestamp": "3:20:11 PM",
+          "level": "info",
+          "text": "Twice-a-Day Crawl Engine started 08:00 AM Morning Sweep across 0 monitored URLs."
+        },
+        {
+          "timestamp": "3:20:12 PM",
+          "level": "success",
+          "text": "Crawl sweep completed: 0 price updates found, 0 undercut alerts dispatched."
+        }
+      ]
+    },
+    {
+      "id": "scan-cron-1790848210099-tenant-apex",
+      "tenantId": "tenant-apex",
+      "batchType": "scheduled_am",
+      "status": "completed",
+      "startedAt": "2026-10-01T09:50:00.968Z",
+      "completedAt": "2026-10-01T09:50:10.099Z",
+      "durationMs": 9131,
+      "productsScanned": 2,
+      "competitorPagesCrawled": 3,
+      "priceChangesFound": 2,
+      "stockChangesFound": 0,
+      "alertsTriggered": 2,
+      "logItems": [
+        {
+          "text": "Twice-a-Day Crawl Engine started 08:00 AM Morning Sweep across 3 monitored URLs.",
+          "level": "info",
+          "timestamp": "3:20:02 PM"
+        },
+        {
+          "text": "Crawl sweep completed: 2 price updates found, 2 undercut alerts dispatched.",
+          "level": "success",
+          "timestamp": "3:20:10 PM"
+        }
+      ]
+    },
+    {
+      "id": "scan-cron-1790848212002-tenant-aura",
+      "tenantId": "tenant-aura",
+      "batchType": "scheduled_am",
+      "status": "completed",
+      "startedAt": "2026-10-01T09:50:00.968Z",
+      "completedAt": "2026-10-01T09:50:12.002Z",
+      "durationMs": 11034,
+      "productsScanned": 0,
+      "competitorPagesCrawled": 0,
+      "priceChangesFound": 0,
+      "stockChangesFound": 0,
+      "alertsTriggered": 0,
+      "logItems": [
+        {
+          "text": "Twice-a-Day Crawl Engine started 08:00 AM Morning Sweep across 0 monitored URLs.",
+          "level": "info",
+          "timestamp": "3:20:11 PM"
+        },
+        {
+          "text": "Crawl sweep completed: 0 price updates found, 0 undercut alerts dispatched.",
+          "level": "success",
+          "timestamp": "3:20:12 PM"
+        }
+      ]
+    }
+  ],
   "plans": [
     {
       "id": "starter",
@@ -426,5 +560,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-10-01T08:30:24.901Z"
+  "lastUpdated": "2026-10-01T09:50:12.420Z"
 }

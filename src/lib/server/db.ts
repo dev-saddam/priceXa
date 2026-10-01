@@ -682,6 +682,15 @@ export async function markAllNotificationsRead(tenantId: string): Promise<void> 
 // ----------------------------------------------------
 
 export async function getScanJobs(tenantId?: string): Promise<ScanJob[]> {
+  if (isSupabaseConfigured()) {
+    try {
+      const jobs = await fetchSupabaseScanJobs(tenantId);
+      if (jobs && jobs.length > 0) return jobs;
+    } catch (err) {
+      console.warn('[Supabase] getScanJobs error, falling back to local:', err);
+    }
+  }
+
   const db = await getDb();
   if (tenantId) {
     return db.scanJobs.filter((s) => s.tenantId === tenantId);
@@ -690,6 +699,14 @@ export async function getScanJobs(tenantId?: string): Promise<ScanJob[]> {
 }
 
 export async function addScanJob(job: ScanJob): Promise<void> {
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseScanJob(job);
+    } catch (err) {
+      console.warn('[Supabase] addScanJob error:', err);
+    }
+  }
+
   const db = await getDb();
   db.scanJobs.unshift(job);
   await saveDb(db);
