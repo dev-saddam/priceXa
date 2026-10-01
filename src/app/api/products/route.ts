@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProducts, addProduct, clearAllProducts, getTenants } from '@/lib/server/db';
+import { getProducts, getProductsPaginated, addProduct, clearAllProducts, getTenants } from '@/lib/server/db';
 import { enqueueJob } from '@/lib/server/queue';
 import { discoverProductUrlFromInternet } from '@/lib/server/crawler';
 
@@ -7,6 +7,28 @@ export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const tenantId = searchParams.get('tenantId') || undefined;
+    const pageParam = searchParams.get('page');
+    const pageSizeParam = searchParams.get('pageSize');
+    const search = searchParams.get('search') || undefined;
+    const category = searchParams.get('category') || undefined;
+    const marketPosition = searchParams.get('marketPosition') || undefined;
+    const matchingStatus = searchParams.get('matchingStatus') || undefined;
+
+    if (pageParam !== null) {
+      const page = parseInt(pageParam, 10) || 1;
+      const pageSize = parseInt(pageSizeParam || '25', 10) || 25;
+      const paginatedResult = await getProductsPaginated({
+        tenantId,
+        page,
+        pageSize,
+        search,
+        category,
+        marketPosition,
+        matchingStatus,
+      });
+      return NextResponse.json({ success: true, ...paginatedResult });
+    }
+
     const products = await getProducts(tenantId);
     return NextResponse.json({ success: true, products });
   } catch (error: any) {

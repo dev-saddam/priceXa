@@ -45,6 +45,11 @@ import {
   fetchSupabasePlans,
   testSupabaseConnection,
   clearSupabaseDummyData,
+  insertSupabaseProductsBatch,
+  fetchSupabaseProductsPaginated,
+  fetchSupabaseProductCatalogStats,
+  fetchSupabaseMatchesForProducts,
+  recalculateSingleProductPosition,
 } from './supabase';
 import { clearQueueJobs } from './queue';
 
@@ -167,6 +172,116 @@ export async function getProducts(tenantId?: string): Promise<Product[]> {
     return db.products.filter((p) => p.tenantId === tenantId);
   }
   return db.products;
+}
+
+export async function getProductsPaginated(params: {
+  tenantId?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: string;
+  marketPosition?: string;
+  matchingStatus?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}): Promise<{
+  products: Product[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  };
+  stats: {
+    total: number;
+    fullyMatched: number;
+    partiallyMatched: number;
+    underCut: number;
+  };
+  categories: string[];
+}> {
+  const tenantId = params.tenantId || 'tenant-apex';
+
+  if (isSupabaseConfigured()) {
+    try {
+      const [paginatedResult, statsResult] = await Promise.all([
+        fetchSupabaseProductsPaginated({ ...params, tenantId }),
+        fetchSupabaseProductCatalogStats(tenantId),
+      ]);
+
+      return {
+        products: paginatedResult.products,
+        pagination: {
+          page: paginatedResult.page,
+          pageSize: paginatedResult.pageSize,
+          total: paginatedResult.total,
+          totalPages: paginatedResult.totalPages,
+        },
+        stats: {
+          total: statsResult.total,
+          fullyMatched: statsResult.fullyMatched,
+          partiallyMatched: statsResult.partiallyMatched,
+          underCut: statsResult.underCut,
+        },
+        categories: statsResult.categories,
+      };
+    } catch (err) {
+      console.warn('[Supabase] getProductsPaginated error, falling back to local:', err);
+    }
+  }
+
+  // Local fallback
+  const db = await getDb();
+  let tenantProducts = db.products.filter((p) => !tenantId || p.tenantId === tenantId);
+  const categories = Array.from(new Set(tenantProducts.map((p) => p.category).filter(Boolean)));
+
+  const total = tenantProducts.length;
+  const fullyMatched = tenantProducts.filter((p) => p.matchingStatus === 'fully_matched').length;
+  const partiallyMatched = tenantProducts.filter((p) => p.matchingStatus === 'partially_matched').length;
+  const underCut = tenantProducts.filter((p) => p.marketPosition === 'expensive').length;
+
+  if (params.category && params.category !== 'all') {
+    tenantProducts = tenantProducts.filter((p) => p.category === params.category);
+  }
+  if (params.marketPosition && params.marketPosition !== 'all') {
+    tenantProducts = tenantProducts.filter((p) => p.marketPosition === params.marketPosition);
+  }
+  if (params.matchingStatus && params.matchingStatus !== 'all') {
+    tenantProducts = tenantProducts.filter((p) => p.matchingStatus === params.matchingStatus);
+  }
+  if (params.search && params.search.trim()) {
+    const q = params.search.trim().toLowerCase();
+    tenantProducts = tenantProducts.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.code.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q)
+    );
+  }
+
+  const page = Math.max(1, params.page || 1);
+  const pageSize = Math.min(100, Math.max(5, params.pageSize || 25));
+  const filteredTotal = tenantProducts.length;
+  const totalPages = Math.max(1, Math.ceil(filteredTotal / pageSize));
+  const from = (page - 1) * pageSize;
+  const paginatedProducts = tenantProducts.slice(from, from + pageSize);
+
+  return {
+    products: paginatedProducts,
+    pagination: {
+      page,
+      pageSize,
+      total: filteredTotal,
+      totalPages,
+    },
+    stats: {
+      total,
+      fullyMatched,
+      partiallyMatched,
+      underCut,
+    },
+    categories: categories.length > 0 ? categories : ['Footwear', 'Apparel', 'Accessories'],
+  };
 }
 
 export async function getProductById(id: string): Promise<Product | undefined> {
@@ -338,6 +453,14 @@ export async function bulkImportProducts(
     };
   });
 
+  if (isSupabaseConfigured()) {
+    try {
+      await insertSupabaseProductsBatch(newProducts);
+    } catch (err) {
+      console.warn('[Supabase] bulkImportProducts error:', err);
+    }
+  }
+
   db.products = [...newProducts, ...db.products];
   await saveDb(db);
   return newProducts;
@@ -405,7 +528,24 @@ export async function deleteCompetitor(id: string): Promise<boolean> {
 // MATCHES HELPERS
 // ----------------------------------------------------
 
-export async function getMatches(tenantId?: string, productId?: string): Promise<CompetitorProductMatch[]> {
+export async function getMatches(
+  tenantId?: string,
+  productId?: string,
+  productIds?: string[]
+): Promise<CompetitorProductMatch[]> {
+  if (isSupabaseConfigured() && tenantId) {
+    try {
+      if (productIds && productIds.length > 0) {
+        return await fetchSupabaseMatchesForProducts(tenantId, productIds);
+      }
+      if (productId) {
+        return await fetchSupabaseMatchesForProducts(tenantId, [productId]);
+      }
+    } catch (err) {
+      console.warn('[Supabase] getMatches error, falling back to local:', err);
+    }
+  }
+
   const db = await getDb();
   let list = db.matches;
   if (tenantId) {
@@ -413,6 +553,10 @@ export async function getMatches(tenantId?: string, productId?: string): Promise
   }
   if (productId) {
     list = list.filter((m) => m.productId === productId);
+  }
+  if (productIds && productIds.length > 0) {
+    const pSet = new Set(productIds);
+    list = list.filter((m) => pSet.has(m.productId));
   }
   return list;
 }
@@ -425,6 +569,7 @@ export async function saveProductMatches(
   if (isSupabaseConfigured()) {
     try {
       await saveSupabaseMatches(tenantId, productId, newMatches);
+      await recalculateSingleProductPosition(tenantId, productId);
     } catch (err) {
       console.warn('[Supabase] saveProductMatches error:', err);
     }
@@ -435,8 +580,32 @@ export async function saveProductMatches(
   db.matches = db.matches.filter((m) => !(m.productId === productId && m.tenantId === tenantId));
   // Add newly chosen matches
   db.matches.push(...newMatches);
+
+  // Update local product position for this product
+  const prodIndex = db.products.findIndex((p) => p.id === productId);
+  if (prodIndex !== -1) {
+    const prod = db.products[prodIndex];
+    prod.matchesCount = newMatches.length;
+    prod.isSearchingCompetitors = false;
+    if (newMatches.length === 0) {
+      prod.marketPosition = 'unmatched';
+      prod.matchingStatus = 'unmatched';
+      prod.lowestCompetitorPrice = undefined;
+      prod.averageCompetitorPrice = undefined;
+    } else {
+      const prices = newMatches.map((m) => m.currentPrice);
+      const minPrice = Math.min(...prices);
+      const avgPrice = Number((prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2));
+      prod.lowestCompetitorPrice = minPrice;
+      prod.averageCompetitorPrice = avgPrice;
+      prod.matchingStatus = newMatches.length >= 2 ? 'fully_matched' : 'partially_matched';
+      if (prod.currentPrice < minPrice) prod.marketPosition = 'cheapest';
+      else if (prod.currentPrice > minPrice) prod.marketPosition = 'expensive';
+      else prod.marketPosition = 'competitive';
+    }
+  }
+
   await saveDb(db);
-  await recalculateMarketPositions(tenantId);
   return db.matches.filter((m) => m.productId === productId);
 }
 
@@ -609,20 +778,24 @@ export async function recalculateMarketPositions(tenantId: string): Promise<void
         product.marketPosition = 'competitive';
       }
     }
+  }
 
-    if (isSupabaseConfigured()) {
-      try {
-        await updateSupabaseProduct(product.id, {
-          matchesCount: product.matchesCount,
-          marketPosition: product.marketPosition,
-          matchingStatus: product.matchingStatus,
-          isSearchingCompetitors: false,
-          lowestCompetitorPrice: product.lowestCompetitorPrice,
-          averageCompetitorPrice: product.averageCompetitorPrice,
-        });
-      } catch (err) {
-        console.warn('[Supabase] Error syncing product position:', err);
-      }
+  if (isSupabaseConfigured()) {
+    // Parallelize Supabase updates in chunks of 25 to avoid sequential execution timeouts
+    for (let i = 0; i < tenantProducts.length; i += 25) {
+      const batch = tenantProducts.slice(i, i + 25);
+      await Promise.all(
+        batch.map((product) =>
+          updateSupabaseProduct(product.id, {
+            matchesCount: product.matchesCount,
+            marketPosition: product.marketPosition,
+            matchingStatus: product.matchingStatus,
+            isSearchingCompetitors: false,
+            lowestCompetitorPrice: product.lowestCompetitorPrice,
+            averageCompetitorPrice: product.averageCompetitorPrice,
+          }).catch((err) => console.warn('[Supabase] Error syncing product position:', err))
+        )
+      );
     }
   }
 

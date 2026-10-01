@@ -842,3 +842,237 @@ export async function clearSupabaseDummyData(tenantId?: string): Promise<void> {
   }
 }
 
+export async function insertSupabaseProductsBatch(products: Product[]): Promise<number> {
+  const sb = getSupabase();
+  if (!sb || products.length === 0) return 0;
+
+  let totalInserted = 0;
+  const CHUNK_SIZE = 250;
+
+  for (let i = 0; i < products.length; i += CHUNK_SIZE) {
+    const chunk = products.slice(i, i + CHUNK_SIZE);
+    const rows = chunk.map((product) => ({
+      id: product.id,
+      tenant_id: product.tenantId,
+      name: product.name,
+      brand: product.brand || '',
+      code: product.code,
+      category: product.category || 'General',
+      mrp: product.mrp,
+      current_price: product.currentPrice,
+      cost_price: product.costPrice,
+      min_margin_percent: product.minMarginPercent,
+      stock_status: product.stockStatus || 'in_stock',
+      stock_count: product.stockCount || 100,
+      image_url: product.imageUrl || '',
+      product_url: product.productUrl || '',
+      matches_count: product.matchesCount || 0,
+      market_position: product.marketPosition || 'unmatched',
+      lowest_competitor_price: product.lowestCompetitorPrice,
+      average_competitor_price: product.averageCompetitorPrice,
+      matching_status: product.matchingStatus || 'searching',
+      is_searching_competitors: product.isSearchingCompetitors ?? true,
+    }));
+
+    const { error } = await sb.from('products').insert(rows);
+    if (error) {
+      console.error('[Supabase] Error inserting products batch chunk:', error.message);
+    } else {
+      totalInserted += rows.length;
+    }
+  }
+
+  return totalInserted;
+}
+
+export async function fetchSupabaseProductsPaginated(params: {
+  tenantId: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  category?: string;
+  marketPosition?: string;
+  matchingStatus?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}): Promise<{
+  products: Product[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}> {
+  const sb = getSupabase();
+  const page = Math.max(1, params.page || 1);
+  const pageSize = Math.min(100, Math.max(5, params.pageSize || 25));
+
+  if (!sb) {
+    return { products: [], total: 0, page, pageSize, totalPages: 0 };
+  }
+
+  let query = sb.from('products').select('*', { count: 'exact' }).eq('tenant_id', params.tenantId);
+
+  if (params.category && params.category !== 'all') {
+    query = query.eq('category', params.category);
+  }
+  if (params.marketPosition && params.marketPosition !== 'all') {
+    query = query.eq('market_position', params.marketPosition);
+  }
+  if (params.matchingStatus && params.matchingStatus !== 'all') {
+    query = query.eq('matching_status', params.matchingStatus);
+  }
+  if (params.search && params.search.trim()) {
+    const s = params.search.trim();
+    query = query.or(`name.ilike.%${s}%,code.ilike.%${s}%,brand.ilike.%${s}%`);
+  }
+
+  const sortBy = params.sortBy === 'name' ? 'name' : params.sortBy === 'price' ? 'current_price' : 'created_at';
+  const ascending = params.sortOrder === 'asc';
+  query = query.order(sortBy, { ascending });
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const { data, count, error } = await query.range(from, to);
+
+  if (error) {
+    console.error('[Supabase] Error fetching paginated products:', error.message);
+    return { products: [], total: 0, page, pageSize, totalPages: 0 };
+  }
+
+  const total = count || 0;
+  return {
+    products: (data || []).map(mapProductFromDb),
+    total,
+    page,
+    pageSize,
+    totalPages: Math.max(1, Math.ceil(total / pageSize)),
+  };
+}
+
+export async function fetchSupabaseProductCatalogStats(tenantId: string): Promise<{
+  total: number;
+  fullyMatched: number;
+  partiallyMatched: number;
+  underCut: number;
+  categories: string[];
+}> {
+  const sb = getSupabase();
+  if (!sb) {
+    return { total: 0, fullyMatched: 0, partiallyMatched: 0, underCut: 0, categories: [] };
+  }
+
+  try {
+    const [totalRes, fullyRes, partialRes, undercutRes, catRes] = await Promise.all([
+      sb.from('products').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId),
+      sb.from('products').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('matching_status', 'fully_matched'),
+      sb.from('products').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('matching_status', 'partially_matched'),
+      sb.from('products').select('*', { count: 'exact', head: true }).eq('tenant_id', tenantId).eq('market_position', 'expensive'),
+      sb.from('products').select('category').eq('tenant_id', tenantId).limit(500),
+    ]);
+
+    const categories = Array.from(new Set((catRes.data || []).map((r: any) => r.category).filter(Boolean)));
+
+    return {
+      total: totalRes.count || 0,
+      fullyMatched: fullyRes.count || 0,
+      partiallyMatched: partialRes.count || 0,
+      underCut: undercutRes.count || 0,
+      categories: categories.length > 0 ? categories : ['Footwear', 'Apparel', 'Accessories'],
+    };
+  } catch (err) {
+    console.warn('[Supabase] Error fetching catalog stats:', err);
+    return { total: 0, fullyMatched: 0, partiallyMatched: 0, underCut: 0, categories: [] };
+  }
+}
+
+export async function fetchSupabaseMatchesForProducts(
+  tenantId: string,
+  productIds: string[]
+): Promise<CompetitorProductMatch[]> {
+  const sb = getSupabase();
+  if (!sb || productIds.length === 0) return [];
+  const { data, error } = await sb
+    .from('matches')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .in('product_id', productIds);
+  if (error) {
+    console.error('[Supabase] Error fetching matches for products:', error.message);
+    return [];
+  }
+  return (data || []).map(mapMatchFromDb);
+}
+
+export async function recalculateSingleProductPosition(
+  tenantId: string,
+  productId: string
+): Promise<Product | null> {
+  const sb = getSupabase();
+  if (!sb) return null;
+
+  try {
+    const { data: matchesData } = await sb
+      .from('matches')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .eq('product_id', productId)
+      .eq('status', 'confirmed');
+
+    const confirmedMatches = matchesData || [];
+    const matchesCount = confirmedMatches.length;
+
+    const { count: activeCompetitorsCount } = await sb
+      .from('competitors')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('status', 'active');
+
+    const totalActiveCompetitors = Math.max(1, activeCompetitorsCount || 1);
+
+    const { data: prodData } = await sb
+      .from('products')
+      .select('*')
+      .eq('id', productId)
+      .single();
+
+    if (!prodData) return null;
+    const currentPrice = Number(prodData.current_price) || 0;
+
+    let marketPosition = 'unmatched';
+    let matchingStatus = 'unmatched';
+    let lowestCompetitorPrice: number | undefined = undefined;
+    let averageCompetitorPrice: number | undefined = undefined;
+
+    if (matchesCount > 0) {
+      matchingStatus = matchesCount >= totalActiveCompetitors ? 'fully_matched' : 'partially_matched';
+      const prices = confirmedMatches.map((m: any) => Number(m.current_price));
+      const minPrice = Math.min(...prices);
+      const avgPrice = Number((prices.reduce((a: number, b: number) => a + b, 0) / prices.length).toFixed(2));
+
+      lowestCompetitorPrice = minPrice;
+      averageCompetitorPrice = avgPrice;
+
+      if (currentPrice < minPrice) {
+        marketPosition = 'cheapest';
+      } else if (currentPrice > minPrice) {
+        marketPosition = 'expensive';
+      } else {
+        marketPosition = 'competitive';
+      }
+    }
+
+    const updated = await updateSupabaseProduct(productId, {
+      matchesCount,
+      marketPosition: marketPosition as any,
+      matchingStatus: matchingStatus as any,
+      isSearchingCompetitors: false,
+      lowestCompetitorPrice,
+      averageCompetitorPrice,
+    });
+
+    return updated;
+  } catch (err) {
+    console.error('[Supabase] Error recalculating single product position:', err);
+    return null;
+  }
+}
