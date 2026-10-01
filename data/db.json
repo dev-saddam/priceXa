@@ -180,35 +180,6 @@
   ],
   "matches": [
     {
-      "id": "match-bg-1790768421172-comp-amazon-gjbs",
-      "tenantId": "tenant-apex",
-      "productId": "prod-1790768394413-se6k",
-      "competitorId": "comp-amazon",
-      "competitorName": "Amazon Marketplace",
-      "competitorProductTitle": "TLRUN Men’s Performance Running Tank Top Ultra Lightweight Singlet",
-      "competitorProductUrl": "https://amazon.com/dp/B093H5DJNJ",
-      "matchConfidence": 60,
-      "matchType": "title_search",
-      "currentPrice": 58,
-      "previousPrice": 58,
-      "priceDiff": 0,
-      "priceDiffPercent": 0,
-      "stockStatus": "in_stock",
-      "currency": "USD",
-      "lastScrapedAt": "Just now",
-      "priceHistory": [
-        {
-          "timestamp": "Today",
-          "price": 58,
-          "stockStatus": "in_stock"
-        }
-      ],
-      "status": "confirmed",
-      "channelType": "marketplace",
-      "platform": "amazon",
-      "sellerName": "AMAZON Verified Buybox"
-    },
-    {
       "id": "match-bg-1790772508261-comp-amazon-f8d4",
       "tenantId": "tenant-apex",
       "productId": "prod-1790772489272-bgsj",

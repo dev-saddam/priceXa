@@ -242,7 +242,14 @@ async function runMigration() {
   // 5. Migrate Matches
   if (localDb.matches && localDb.matches.length > 0) {
     process.stdout.write('⏳ Migrating Competitor Matches... ');
-    const matchRows = localDb.matches.map((m) => ({
+    const existingProductIds = new Set((localDb.products || []).map((p) => p.id));
+    const existingCompetitorIds = new Set((localDb.competitors || []).map((c) => c.id));
+
+    const validMatches = localDb.matches.filter(
+      (m) => existingProductIds.has(m.productId) && existingCompetitorIds.has(m.competitorId)
+    );
+
+    const matchRows = validMatches.map((m) => ({
       id: m.id,
       tenant_id: m.tenantId,
       product_id: m.productId,
