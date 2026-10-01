@@ -30,14 +30,13 @@ import {
 interface DashboardViewProps {
   onOpenCsvModal: () => void;
   onOpenAddProductModal: () => void;
-  onOpenScanRunner: () => void;
+  onOpenScanRunner?: () => void;
   onOpenAutoMatchModal: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenCsvModal,
   onOpenAddProductModal,
-  onOpenScanRunner,
   onOpenAutoMatchModal,
 }) => {
   const {
@@ -187,17 +186,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-2.5">
             <button
-              onClick={onOpenScanRunner}
+              onClick={onOpenCsvModal}
               className="btn-primary-clean flex items-center gap-2 px-4 py-2.5 rounded-xl text-white text-xs font-semibold shadow-lg transition-all transform active:scale-95 cursor-pointer whitespace-nowrap"
             >
-              <Zap className="w-3.5 h-3.5" />
-              Trigger Instant Scan
-            </button>
-            <button
-              onClick={onOpenCsvModal}
-              className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-900/80 border border-white/[0.08] hover:border-white/20 text-slate-200 text-xs font-semibold transition-all hover:bg-slate-800 cursor-pointer whitespace-nowrap"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <FileSpreadsheet className="w-3.5 h-3.5 text-white" />
               Import CSV
             </button>
             <button
@@ -891,17 +883,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </div>
 
-            <div className="pt-1 flex items-center justify-between border-t border-white/[0.06]">
-              <span className="text-[11px] text-slate-400 flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 text-slate-500" />
-                Next run in ~4h 15m
+            <div className="pt-2 flex items-center justify-between border-t border-white/[0.06]">
+              <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 text-emerald-400 animate-spin" />
+                Next crawl: <strong className="text-slate-200">{currentTenant.nextScanAt || 'Today at 08:00 PM'}</strong>
               </span>
-              <button
-                onClick={onOpenScanRunner}
-                className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer"
-              >
-                Run Scan Now →
-              </button>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-white/[0.08] text-emerald-300">
+                cron: 0 8,20 * * *
+              </span>
             </div>
           </div>
 

@@ -170,26 +170,15 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Right: Crawl Indicator, Live Scan Button, Notifications, Admin Switch & Logout */}
       <div className="flex items-center gap-3">
-        {/* Scheduler status badge */}
+        {/* Scheduler status badge: System scans twice a day automatically */}
         {!isSuperAdmin && (
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-white/[0.08] text-xs text-slate-300">
+          <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/70 border border-white/[0.08] text-xs text-slate-300">
             <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
             <span className="text-slate-400">
-              Next 2x/Day Crawl: <span className="text-slate-200 font-semibold">{currentTenant.nextScanAt}</span>
+              Next 2x/Day Crawl:{' '}
+              <span className="text-slate-200 font-semibold">{currentTenant.nextScanAt || 'Today at 08:00 PM'}</span>
             </span>
           </div>
-        )}
-
-        {/* Live Instant Scan Button */}
-        {!isSuperAdmin && (
-          <button
-            onClick={onOpenScanRunner}
-            disabled={isScanning}
-            className="btn-primary-clean flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-white text-xs font-semibold transition-all transform active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            <Zap className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin' : ''}`} />
-            <span>{isScanning ? 'Scanning...' : 'Instant Scan'}</span>
-          </button>
         )}
 
         {/* Notifications Bell */}
