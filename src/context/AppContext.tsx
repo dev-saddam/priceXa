@@ -210,14 +210,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         fetch('/api/tenants').then((r) => r.json()).catch(() => null),
       ]);
 
-      if (prodRes?.success && Array.isArray(prodRes.products)) {
-        setProducts(prodRes.products);
+      const fetchedMatches = (matchRes?.success && Array.isArray(matchRes.matches)) ? matchRes.matches : [];
+      if (matchRes?.success && Array.isArray(matchRes.matches)) {
+        setMatches(matchRes.matches);
       }
       if (compRes?.success && Array.isArray(compRes.competitors)) {
         setCompetitors(compRes.competitors);
       }
-      if (matchRes?.success && Array.isArray(matchRes.matches)) {
-        setMatches(matchRes.matches);
+      if (prodRes?.success && Array.isArray(prodRes.products)) {
+        setProducts(recalculateProductPositions(prodRes.products, fetchedMatches.length > 0 ? fetchedMatches : matches));
       }
       if (alertRes?.success && Array.isArray(alertRes.notifications)) {
         setNotifications(alertRes.notifications);
@@ -684,7 +685,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const pRes = await fetch(`/api/products?tenantId=${currentTenant.id}`);
         const pData = await pRes.json();
         if (pData.success && pData.products) {
-          setProducts(pData.products);
+          setProducts(recalculateProductPositions(pData.products, updatedMatches));
         }
       }
     } catch (err) {

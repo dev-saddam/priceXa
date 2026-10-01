@@ -577,49 +577,57 @@ export async function recalculateMarketPositions(tenantId: string): Promise<void
   const tenantCompetitors = db.competitors.filter((c) => c.tenantId === tenantId && c.status === 'active');
   const totalActiveCompetitors = Math.max(1, tenantCompetitors.length);
 
-  tenantProducts.forEach((product) => {
+  for (const product of tenantProducts) {
     const prodMatches = db.matches.filter(
       (m) => m.productId === product.id && m.tenantId === tenantId && m.status === 'confirmed'
     );
 
     product.matchesCount = prodMatches.length;
+    product.isSearchingCompetitors = false;
 
     if (prodMatches.length === 0) {
       product.marketPosition = 'unmatched';
-      if (!product.isSearchingCompetitors) {
-        product.matchingStatus = 'unmatched';
-      }
+      product.matchingStatus = 'unmatched';
       product.lowestCompetitorPrice = undefined;
       product.averageCompetitorPrice = undefined;
-      return;
-    }
-
-    product.isSearchingCompetitors = false;
-    product.matchingStatus =
-      prodMatches.length >= totalActiveCompetitors ? 'fully_matched' : 'partially_matched';
-
-    const prices = prodMatches.map((m) => m.currentPrice);
-    const minPrice = Math.min(...prices);
-    const avgPrice = Number((prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2));
-
-    product.lowestCompetitorPrice = minPrice;
-    product.averageCompetitorPrice = avgPrice;
-
-    // Check position:
-    // cheapest: product.currentPrice < minPrice
-    // expensive (under-cut): product.currentPrice > minPrice
-    // competitive: product.currentPrice == minPrice
-    if (product.currentPrice < minPrice) {
-      product.marketPosition = 'cheapest';
-    } else if (product.currentPrice > minPrice) {
-      product.marketPosition = 'expensive';
     } else {
-      product.marketPosition = 'competitive';
+      product.matchingStatus =
+        prodMatches.length >= totalActiveCompetitors ? 'fully_matched' : 'partially_matched';
+
+      const prices = prodMatches.map((m) => m.currentPrice);
+      const minPrice = Math.min(...prices);
+      const avgPrice = Number((prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(2));
+
+      product.lowestCompetitorPrice = minPrice;
+      product.averageCompetitorPrice = avgPrice;
+
+      if (product.currentPrice < minPrice) {
+        product.marketPosition = 'cheapest';
+      } else if (product.currentPrice > minPrice) {
+        product.marketPosition = 'expensive';
+      } else {
+        product.marketPosition = 'competitive';
+      }
     }
-  });
+
+    if (isSupabaseConfigured()) {
+      try {
+        await updateSupabaseProduct(product.id, {
+          matchesCount: product.matchesCount,
+          marketPosition: product.marketPosition,
+          matchingStatus: product.matchingStatus,
+          isSearchingCompetitors: false,
+          lowestCompetitorPrice: product.lowestCompetitorPrice,
+          averageCompetitorPrice: product.averageCompetitorPrice,
+        });
+      } catch (err) {
+        console.warn('[Supabase] Error syncing product position:', err);
+      }
+    }
+  }
 
   // Update competitor counts and average price differences
-  tenantCompetitors.forEach((comp) => {
+  for (const comp of tenantCompetitors) {
     const compMatches = db.matches.filter(
       (m) => m.competitorId === comp.id && m.tenantId === tenantId && m.status === 'confirmed'
     );
@@ -631,7 +639,18 @@ export async function recalculateMarketPositions(tenantId: string): Promise<void
     } else {
       comp.avgPriceDiffPercent = 0;
     }
-  });
+
+    if (isSupabaseConfigured()) {
+      try {
+        await updateSupabaseCompetitor(comp.id, {
+          monitoredProductsCount: comp.monitoredProductsCount,
+          avgPriceDiffPercent: comp.avgPriceDiffPercent,
+        });
+      } catch (err) {
+        console.warn('[Supabase] Error syncing competitor metrics:', err);
+      }
+    }
+  }
 
   await saveDb(db);
 }

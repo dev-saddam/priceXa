@@ -96,11 +96,11 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
       let matchesMatchStatus = true;
       if (matchingStatusFilter === 'fully_matched') {
-        matchesMatchStatus = p.matchesCount >= 3;
+        matchesMatchStatus = p.matchingStatus === 'fully_matched';
       } else if (matchingStatusFilter === 'needs_review') {
-        matchesMatchStatus = p.matchesCount > 0 && p.matchesCount < 3;
+        matchesMatchStatus = p.matchingStatus === 'partially_matched';
       } else if (matchingStatusFilter === 'unmatched') {
-        matchesMatchStatus = p.matchesCount === 0;
+        matchesMatchStatus = p.matchesCount === 0 || p.matchingStatus === 'unmatched';
       }
 
       return matchesSearch && matchesCat && matchesPos && matchesMatchStatus;
@@ -118,8 +118,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   }, [filteredProducts, validCurrentPage, pageSize]);
 
   // Catalog high-level stats
-  const fullyMatchedCount = tenantProducts.filter((p) => p.matchesCount >= 3).length;
-  const needsReviewCount = tenantProducts.filter((p) => p.matchesCount < 3).length;
+  const fullyMatchedCount = tenantProducts.filter((p) => p.matchingStatus === 'fully_matched').length;
+  const needsReviewCount = tenantProducts.filter((p) => p.matchingStatus === 'partially_matched').length;
   const undercutCount = tenantProducts.filter((p) => p.marketPosition === 'expensive').length;
 
   // Multi-selection handlers
@@ -532,6 +532,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                   const prodMatches = matches.filter(
                     (m) => m.productId === product.id && m.status === 'confirmed'
                   );
+                  const isSearching = (product.isSearchingCompetitors || product.matchingStatus === 'searching') && prodMatches.length === 0;
                   const lowestComp = prodMatches.reduce((min, cur) => {
                     return !min || cur.currentPrice < min.currentPrice ? cur : min;
                   }, null as any);
@@ -627,7 +628,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
                       {/* Lowest Competitor */}
                       <td className="p-3">
-                        {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                        {isSearching ? (
                           <div className="flex items-center gap-1.5 text-blue-400 py-1">
                             <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
                             <span className="text-[11px] font-medium animate-pulse">Scanning stores...</span>
@@ -649,7 +650,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
                       {/* Market Position */}
                       <td className="p-3">
-                        {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                        {isSearching ? (
                           <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-300 border border-blue-500/30 flex items-center gap-1.5 w-fit animate-pulse">
                             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
                             <span>Searching</span>
@@ -673,7 +674,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
                       {/* Monitored Competitors Count with URL Matcher trigger */}
                       <td className="p-3">
-                        {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                        {isSearching ? (
                           <div className="flex items-center gap-2 p-2 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-300 animate-pulse max-w-[220px]">
                             <Loader2 className="w-4 h-4 animate-spin text-blue-400 shrink-0" />
                             <div className="min-w-0">
@@ -736,7 +737,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                       {/* Actions */}
                       <td className="p-3 pr-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                          {isSearching ? (
                             <button
                               disabled
                               className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 opacity-80 cursor-wait flex items-center gap-1.5"

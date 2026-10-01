@@ -197,6 +197,11 @@ export const batchAutoMatchFunction = inngest.createFunction(
 
         if (newMatches.length > 0) {
           await saveProductMatches(tenantId, prod.id, newMatches);
+        } else {
+          await updateProduct(prod.id, {
+            isSearchingCompetitors: false,
+            matchingStatus: 'unmatched',
+          });
         }
 
         return newMatches.length;

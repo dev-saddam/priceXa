@@ -436,6 +436,11 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
     if (newMatches.length > 0) {
       await saveProductMatches(tenantId, prod.id, newMatches);
       totalMatchesSaved += newMatches.length;
+    } else {
+      await updateProduct(prod.id, {
+        isSearchingCompetitors: false,
+        matchingStatus: 'unmatched',
+      });
     }
 
     await syncJobState(job, {

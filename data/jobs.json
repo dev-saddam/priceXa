@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "id": "job-1790843391893-rm7t",
+    "tenantId": "tenant-apex",
+    "type": "batch_auto_match",
+    "title": "Background Competitor Search for Skechers Slip-ins RF: D'Lux Walker 2.0 - Rezinate",
+    "status": "completed",
+    "progress": 100,
+    "totalItems": 1,
+    "processedItems": 1,
+    "currentTaskDescription": "Finished successfully in background",
+    "payload": {
+      "tenantId": "tenant-apex",
+      "productIds": [
+        "prod-1790843390262-qr4k"
+      ]
+    },
+    "createdAt": "2026-10-01T08:29:51.893Z",
+    "startedAt": "2026-10-01T08:29:53.258Z",
+    "resultSummary": {
+      "productsScanned": 1,
+      "matchesSaved": 2,
+      "durationMs": 31744
+    },
+    "completedAt": "2026-10-01T08:30:25.023Z"
+  }
+]

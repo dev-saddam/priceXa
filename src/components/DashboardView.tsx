@@ -573,6 +573,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   ) : (
                     paginatedProducts.map((product) => {
                       const prodMatches = tenantMatches.filter((m) => m.productId === product.id);
+                      const isSearching = (product.isSearchingCompetitors || product.matchingStatus === 'searching') && prodMatches.length === 0;
                       const lowestComp = prodMatches.reduce((min, cur) => {
                         return !min || cur.currentPrice < min.currentPrice ? cur : min;
                       }, null as any);
@@ -634,7 +635,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                           {/* 3. Competitor Lowest */}
                           <td className="py-3.5 px-3">
-                            {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                            {isSearching ? (
                               <div className="flex items-center gap-1.5 text-blue-400 py-1">
                                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                 <span className="text-[11px] font-medium animate-pulse">Searching stores...</span>
@@ -681,7 +682,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                           {/* 4. Price Delta */}
                           <td className="py-3.5 px-3 whitespace-nowrap">
-                            {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                            {isSearching ? (
                               <span className="text-[11px] text-blue-400/80 italic">Searching Google...</span>
                             ) : lowestComp ? (
                               <span
@@ -723,7 +724,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                           {/* 5. Market Position Badge */}
                           <td className="py-3.5 px-3">
-                            {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                            {isSearching ? (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-500/15 text-blue-300 border border-blue-500/30 whitespace-nowrap animate-pulse">
                                 <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping" />
                                 Searching
@@ -758,7 +759,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                           {/* 6. Action Button */}
                           <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                            {product.isSearchingCompetitors || product.matchingStatus === 'searching' ? (
+                            {isSearching ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-400 font-semibold text-[11px] border border-blue-500/20">
                                 <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
                                 In Background
