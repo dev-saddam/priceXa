@@ -43,6 +43,7 @@ import {
   fetchSupabaseScanJobs,
   insertSupabaseScanJob,
   fetchSupabasePlans,
+  testSupabaseConnection,
 } from './supabase';
 
 export interface DatabaseSchema {
@@ -64,46 +65,37 @@ const DB_FILE = path.join(DB_DIR, 'db.json');
 let writePromise = Promise.resolve();
 
 function ensureDbFile(): DatabaseSchema {
-  if (!fs.existsSync(DB_DIR)) {
-    fs.mkdirSync(DB_DIR, { recursive: true });
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, 'utf-8');
+      return JSON.parse(raw);
+    }
+  } catch (err) {
+    console.warn('[DB] Could not read db.json, using in-memory store:', err);
   }
 
-  if (!fs.existsSync(DB_FILE)) {
-    const initialData: DatabaseSchema = {
-      tenants: INITIAL_TENANTS,
-      products: INITIAL_PRODUCTS,
-      competitors: INITIAL_COMPETITORS,
-      matches: INITIAL_MATCHES,
-      alertRules: INITIAL_ALERT_RULES,
-      notifications: INITIAL_NOTIFICATIONS,
-      scanJobs: INITIAL_SCAN_JOBS,
-      plans: INITIAL_PLANS,
-      lastUpdated: new Date().toISOString(),
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(initialData, null, 2), 'utf-8');
-    return initialData;
-  }
+  const defaultData: DatabaseSchema = {
+    tenants: INITIAL_TENANTS,
+    products: INITIAL_PRODUCTS,
+    competitors: INITIAL_COMPETITORS,
+    matches: INITIAL_MATCHES,
+    alertRules: INITIAL_ALERT_RULES,
+    notifications: INITIAL_NOTIFICATIONS,
+    scanJobs: INITIAL_SCAN_JOBS,
+    plans: INITIAL_PLANS,
+    lastUpdated: new Date().toISOString(),
+  };
 
   try {
-    const raw = fs.readFileSync(DB_FILE, 'utf-8');
-    const parsed = JSON.parse(raw);
-    return parsed;
-  } catch (err) {
-    console.error('Error reading db.json, reinitializing default store:', err);
-    const fallback: DatabaseSchema = {
-      tenants: INITIAL_TENANTS,
-      products: INITIAL_PRODUCTS,
-      competitors: INITIAL_COMPETITORS,
-      matches: INITIAL_MATCHES,
-      alertRules: INITIAL_ALERT_RULES,
-      notifications: INITIAL_NOTIFICATIONS,
-      scanJobs: INITIAL_SCAN_JOBS,
-      plans: INITIAL_PLANS,
-      lastUpdated: new Date().toISOString(),
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(fallback, null, 2), 'utf-8');
-    return fallback;
+    if (!fs.existsSync(DB_DIR)) {
+      fs.mkdirSync(DB_DIR, { recursive: true });
+    }
+    fs.writeFileSync(DB_FILE, JSON.stringify(defaultData, null, 2), 'utf-8');
+  } catch {
+    // Read-only serverless environment (e.g. Vercel) - safely return in-memory default
   }
+
+  return defaultData;
 }
 
 export async function getDb(): Promise<DatabaseSchema> {
@@ -141,7 +133,7 @@ export async function getDb(): Promise<DatabaseSchema> {
         lastUpdated: new Date().toISOString(),
       };
     } catch (err) {
-      console.warn('[Supabase] Error loading from cloud, falling back to local file store:', err);
+      console.warn('[Supabase] Error loading from cloud, falling back to local store:', err);
     }
   }
 
@@ -151,10 +143,14 @@ export async function getDb(): Promise<DatabaseSchema> {
 export async function saveDb(data: DatabaseSchema): Promise<void> {
   data.lastUpdated = new Date().toISOString();
   writePromise = writePromise.then(async () => {
-    if (!fs.existsSync(DB_DIR)) {
-      fs.mkdirSync(DB_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(DB_DIR)) {
+        fs.mkdirSync(DB_DIR, { recursive: true });
+      }
+      await fs.promises.writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+    } catch {
+      // Gracefully ignore filesystem write limitations on serverless platforms (Vercel)
     }
-    await fs.promises.writeFile(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
   });
   return writePromise;
 }

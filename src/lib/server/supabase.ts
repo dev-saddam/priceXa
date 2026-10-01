@@ -1,10 +1,29 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Polyfill WebSocket for Node.js environments < 22
+// Resilient WebSocket polyfill for Node.js environments (Vercel serverless / Node 20)
 if (typeof globalThis.WebSocket === 'undefined') {
   try {
     globalThis.WebSocket = require('ws');
-  } catch {}
+  } catch {
+    // In serverless environments where 'ws' module may not be dynamically resolvable,
+    // provide a minimal WebSocket stub to satisfy @supabase/realtime-js constructor check
+    class ServerlessWebSocket {
+      static CONNECTING = 0;
+      static OPEN = 1;
+      static CLOSING = 2;
+      static CLOSED = 3;
+      readyState = 0;
+      onopen = null;
+      onclose = null;
+      onerror = null;
+      onmessage = null;
+      send() {}
+      close() {}
+      addEventListener() {}
+      removeEventListener() {}
+    }
+    globalThis.WebSocket = ServerlessWebSocket as any;
+  }
 }
 
 import {
@@ -21,24 +40,120 @@ import {
 
 let supabaseClient: SupabaseClient | null = null;
 
+export function getSupabaseUrl(): string | undefined {
+  const raw =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    process.env.SUPABASE_PROJECT_URL;
+  return raw ? raw.trim().replace(/^["']|["']$/g, '') : undefined;
+}
+
+export function getSupabaseKey(): string | undefined {
+  const raw =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_KEY;
+  return raw ? raw.trim().replace(/^["']|["']$/g, '') : undefined;
+}
+
 export function isSupabaseConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
-  );
+  return Boolean(getSupabaseUrl() && getSupabaseKey());
 }
 
 export function getSupabase(): SupabaseClient | null {
   if (!isSupabaseConfigured()) return null;
 
   if (!supabaseClient) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    supabaseClient = createClient(url, key, {
-      auth: { persistSession: false },
-    });
+    const url = getSupabaseUrl()!;
+    const key = getSupabaseKey()!;
+    try {
+      supabaseClient = createClient(url, key, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+        },
+      });
+    } catch (err) {
+      console.error('[Supabase] Failed to instantiate createClient:', err);
+      return null;
+    }
   }
   return supabaseClient;
+}
+
+export async function testSupabaseConnection(): Promise<{
+  connected: boolean;
+  url?: string;
+  hasServiceKey: boolean;
+  error?: string;
+  counts?: {
+    tenants: number;
+    products: number;
+    competitors: number;
+    matches: number;
+  };
+}> {
+  const url = getSupabaseUrl();
+  const hasKey = Boolean(getSupabaseKey());
+  const hasServiceKey = Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY);
+
+  if (!url || !hasKey) {
+    return {
+      connected: false,
+      url,
+      hasServiceKey,
+      error: 'Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY in environment variables.',
+    };
+  }
+
+  const sb = getSupabase();
+  if (!sb) {
+    return {
+      connected: false,
+      url,
+      hasServiceKey,
+      error: 'Could not initialize Supabase client instance.',
+    };
+  }
+
+  try {
+    const [tRes, pRes, cRes, mRes] = await Promise.all([
+      sb.from('tenants').select('id', { count: 'exact', head: true }),
+      sb.from('products').select('id', { count: 'exact', head: true }),
+      sb.from('competitors').select('id', { count: 'exact', head: true }),
+      sb.from('matches').select('id', { count: 'exact', head: true }),
+    ]);
+
+    if (tRes.error) {
+      return {
+        connected: false,
+        url,
+        hasServiceKey,
+        error: `Supabase query error: ${tRes.error.message}`,
+      };
+    }
+
+    return {
+      connected: true,
+      url,
+      hasServiceKey,
+      counts: {
+        tenants: tRes.count ?? 0,
+        products: pRes.count ?? 0,
+        competitors: cRes.count ?? 0,
+        matches: mRes.count ?? 0,
+      },
+    };
+  } catch (err: any) {
+    return {
+      connected: false,
+      url,
+      hasServiceKey,
+      error: err.message || 'Unknown network or execution error connecting to Supabase.',
+    };
+  }
 }
 
 // -----------------------------------------------------------------------------

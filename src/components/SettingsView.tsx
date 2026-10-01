@@ -15,7 +15,9 @@ import {
   Store,
   AlertCircle,
   Loader2,
-  ArrowRight
+  ArrowRight,
+  Database,
+  ExternalLink,
 } from 'lucide-react';
 import { 
   COUNTRY_LIST,
@@ -40,6 +42,21 @@ export const SettingsView: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [supabaseStatus, setSupabaseStatus] = useState<any>(null);
+  const [loadingSupabase, setLoadingSupabase] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/supabase/status')
+      .then((r) => r.json())
+      .then((data) => {
+        setSupabaseStatus(data);
+        setLoadingSupabase(false);
+      })
+      .catch(() => {
+        setSupabaseStatus({ connected: false, error: 'Failed connecting to API endpoint' });
+        setLoadingSupabase(false);
+      });
+  }, []);
 
   // Sync state if currentTenant changes (e.g., tenant switch)
   useEffect(() => {
@@ -328,6 +345,95 @@ export const SettingsView: React.FC = () => {
               </label>
             </div>
           </div>
+        </div>
+
+        {/* Cloud Database & Supabase Connectivity Status */}
+        <div className="p-6 rounded-3xl glass-card space-y-4 border border-white/[0.08]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
+              <Database className="w-4 h-4 text-emerald-400" />
+              Cloud Database & Storage (Supabase)
+            </h2>
+            {loadingSupabase ? (
+              <span className="text-[11px] text-slate-400 flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-blue-400" />
+                Testing link...
+              </span>
+            ) : supabaseStatus?.connected ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 text-[11px] font-semibold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                Connected & Live
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300 text-[11px] font-semibold">
+                <AlertCircle className="w-3 h-3 text-amber-400" />
+                Missing Vercel Env Vars
+              </span>
+            )}
+          </div>
+
+          {loadingSupabase ? (
+            <p className="text-xs text-slate-400">Pinging Supabase cloud endpoint...</p>
+          ) : supabaseStatus?.connected ? (
+            <div className="space-y-3">
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Your deployment is connected to Supabase PostgreSQL. All product uploads, pricing feeds, competitor tracking, and alert triggers persist in real time.
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Products</span>
+                  <span className="text-lg font-extrabold text-slate-100">{supabaseStatus.counts?.products ?? 0}</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Tenants</span>
+                  <span className="text-lg font-extrabold text-slate-100">{supabaseStatus.counts?.tenants ?? 0}</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Competitors</span>
+                  <span className="text-lg font-extrabold text-slate-100">{supabaseStatus.counts?.competitors ?? 0}</span>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Matches</span>
+                  <span className="text-lg font-extrabold text-slate-100">{supabaseStatus.counts?.matches ?? 0}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1 border-t border-white/[0.06]">
+                <span className="truncate max-w-[280px]">Endpoint: <span className="font-mono text-slate-300">{supabaseStatus.url}</span></span>
+                <span className="text-emerald-400/90 font-medium">Service Role Access Active</span>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-amber-500/[0.08] border border-amber-500/20 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-amber-200">How to Connect Supabase on Vercel:</h3>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Vercel deployments run isolated serverless functions. To connect your Supabase database, add these environment variables in your Vercel Dashboard:
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-white/[0.08] space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between text-slate-300">
+                  <span className="text-blue-400 font-semibold">NEXT_PUBLIC_SUPABASE_URL</span>
+                  <span className="text-slate-500 truncate max-w-[200px]">https://your-project.supabase.co</span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span className="text-blue-400 font-semibold">SUPABASE_SERVICE_ROLE_KEY</span>
+                  <span className="text-slate-500">eyJhbGciOi... (secret key)</span>
+                </div>
+                <div className="flex justify-between text-slate-300">
+                  <span className="text-blue-400 font-semibold">NEXT_PUBLIC_SUPABASE_ANON_KEY</span>
+                  <span className="text-slate-500">eyJhbGciOi... (public anon key)</span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-400">
+                Steps: Open <strong className="text-slate-200">Vercel &gt; Your Project &gt; Settings &gt; Environment Variables</strong>, add the 3 keys above, then click <strong className="text-slate-200">Deployments &gt; Redeploy</strong>.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Submit */}
