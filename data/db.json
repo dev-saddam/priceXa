@@ -82,29 +82,7 @@
       "autoRepriceRecommendation": false
     }
   ],
-  "products": [
-    {
-      "id": "prod-1790839769006-fak6",
-      "tenantId": "tenant-apex",
-      "name": "SKX AERO BURST",
-      "brand": "skechers",
-      "code": "TEST-01",
-      "category": "Footwear",
-      "mrp": 17999,
-      "currentPrice": 17999,
-      "costPrice": 9000,
-      "minMarginPercent": 30,
-      "stockStatus": "in_stock",
-      "stockCount": 50,
-      "imageUrl": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&q=80",
-      "productUrl": "",
-      "createdAt": "2026-10-01",
-      "matchesCount": 0,
-      "marketPosition": "unmatched",
-      "matchingStatus": "searching",
-      "isSearchingCompetitors": true
-    }
-  ],
+  "products": [],
   "competitors": [
     {
       "id": "comp-amazon",
@@ -114,10 +92,10 @@
       "baseUrl": "https://amazon.co.uk",
       "logo": "📦",
       "status": "active",
-      "monitoredProductsCount": 2,
+      "monitoredProductsCount": 0,
       "searchSelector": null,
-      "avgPriceDiffPercent": 4.8,
-      "lastScrapedAt": "Today at 08:02 AM",
+      "avgPriceDiffPercent": 0,
+      "lastScrapedAt": "Never",
       "channelType": "marketplace",
       "platform": "amazon"
     },
@@ -132,7 +110,7 @@
       "monitoredProductsCount": 0,
       "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:03 AM",
+      "lastScrapedAt": "Never",
       "channelType": "marketplace",
       "platform": "amazon"
     },
@@ -147,7 +125,7 @@
       "monitoredProductsCount": 0,
       "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Today at 08:05 AM",
+      "lastScrapedAt": "Never",
       "channelType": "marketplace",
       "platform": "amazon"
     },
@@ -162,7 +140,7 @@
       "monitoredProductsCount": 0,
       "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Yesterday at 08:05 PM",
+      "lastScrapedAt": "Never",
       "channelType": "marketplace",
       "platform": "amazon"
     },
@@ -177,7 +155,7 @@
       "monitoredProductsCount": 0,
       "searchSelector": null,
       "avgPriceDiffPercent": 0,
-      "lastScrapedAt": "Yesterday at 08:07 PM",
+      "lastScrapedAt": "Never",
       "channelType": "marketplace",
       "platform": "amazon"
     },
@@ -189,45 +167,15 @@
       "baseUrl": "https://skechers.co.uk",
       "logo": "🏷️",
       "status": "active",
-      "monitoredProductsCount": 1,
+      "monitoredProductsCount": 0,
       "searchSelector": null,
-      "avgPriceDiffPercent": -6.7,
+      "avgPriceDiffPercent": 0,
       "lastScrapedAt": "Never",
       "channelType": "brand_official",
       "platform": "amazon"
     }
   ],
-  "matches": [
-    {
-      "id": "match-bg-1790839793861-comp-amazon-osca",
-      "tenantId": "tenant-apex",
-      "productId": "prod-1790839769006-fak6",
-      "competitorId": "comp-amazon",
-      "competitorName": "Amazon Marketplace (UK)",
-      "competitorProductTitle": "SkechersMens Skx Aero Burst Sneaker",
-      "competitorProductUrl": "https://amazon.in/dp/B0FF2QS2VT",
-      "matchConfidence": 100,
-      "matchType": "title_search",
-      "currentPrice": 17999,
-      "previousPrice": 17999,
-      "priceDiff": 0,
-      "priceDiffPercent": 0,
-      "stockStatus": "in_stock",
-      "currency": "USD",
-      "lastScrapedAt": "Just now",
-      "priceHistory": [
-        {
-          "price": 17999,
-          "timestamp": "Today",
-          "stockStatus": "in_stock"
-        }
-      ],
-      "status": "confirmed",
-      "channelType": "marketplace",
-      "platform": "amazon",
-      "sellerName": "AMAZON Verified Buybox"
-    }
-  ],
+  "matches": [],
   "alertRules": [
     {
       "id": "rule-1",
@@ -278,97 +226,8 @@
       "createdAt": "2026-10-01"
     }
   ],
-  "notifications": [
-    {
-      "id": "notif-bg-1790840780601-8s6z",
-      "tenantId": "tenant-apex",
-      "ruleId": null,
-      "ruleName": null,
-      "severity": "critical",
-      "title": "Competitor Under-Cut Alert",
-      "message": "Amazon Marketplace (UK) lowered price for SKX AERO BURST to $16697.26, undercutting your price of $17999.00.",
-      "productId": "prod-1790839769006-fak6",
-      "productName": "SKX AERO BURST",
-      "productSku": "TEST-01",
-      "competitorId": "comp-amazon",
-      "competitorName": "Amazon Marketplace (UK)",
-      "oldPrice": 17999,
-      "newPrice": 16697.26,
-      "myPrice": 17999,
-      "priceDiffPercent": -7.2,
-      "stockChange": null,
-      "timestamp": "Just now",
-      "read": false,
-      "actionTaken": null
-    },
-    {
-      "id": "notif-bg-1790840476108-6ckp",
-      "tenantId": "tenant-apex",
-      "ruleId": null,
-      "ruleName": null,
-      "severity": "critical",
-      "title": "Competitor Under-Cut Alert",
-      "message": "Amazon Marketplace (UK) lowered price for SKX AERO BURST to $16697.26, undercutting your price of $17999.00.",
-      "productId": "prod-1790839769006-fak6",
-      "productName": "SKX AERO BURST",
-      "productSku": "TEST-01",
-      "competitorId": "comp-amazon",
-      "competitorName": "Amazon Marketplace (UK)",
-      "oldPrice": 17999,
-      "newPrice": 16697.26,
-      "myPrice": 17999,
-      "priceDiffPercent": -7.2,
-      "stockChange": null,
-      "timestamp": "Just now",
-      "read": false,
-      "actionTaken": null
-    },
-    {
-      "id": "notif-1790835953890",
-      "tenantId": "tenant-apex",
-      "ruleId": "rule-1",
-      "ruleName": "Competitor Under-Cut Alert (> 5%)",
-      "severity": "critical",
-      "title": "Competitor Under-Cut Alert",
-      "message": "SKECHERS lowered price for SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE to £5,599.00, undercutting your price of £5,999.00 (-6.7%).",
-      "productId": "prod-1790772489272-bgsj",
-      "productName": "SKECHERS SLIP-INS RF: D'LUX WALKER 2.0 - REZINATE",
-      "productSku": "T-125",
-      "competitorId": "comp-1790769054236-du2f",
-      "competitorName": "SKECHERS",
-      "oldPrice": 5999,
-      "newPrice": 5599,
-      "myPrice": 5999,
-      "priceDiffPercent": -6.7,
-      "stockChange": null,
-      "timestamp": "Today at 08:05 AM",
-      "read": false,
-      "actionTaken": null
-    }
-  ],
-  "scanJobs": [
-    {
-      "id": "scan-bg-1790840781609",
-      "tenantId": "tenant-apex",
-      "batchType": "manual_instant",
-      "status": "completed",
-      "startedAt": "01:16 PM",
-      "completedAt": "01:16 PM",
-      "durationMs": 4500,
-      "productsScanned": 1,
-      "competitorPagesCrawled": 1,
-      "priceChangesFound": 1,
-      "stockChangesFound": 0,
-      "alertsTriggered": 1,
-      "logItems": [
-        {
-          "timestamp": "1:16:19 PM",
-          "level": "info",
-          "text": "Background worker started crawler across 1 monitored URLs"
-        }
-      ]
-    }
-  ],
+  "notifications": [],
+  "scanJobs": [],
   "plans": [
     {
       "id": "starter",
@@ -432,5 +291,5 @@
       "activeSubscribers": 8
     }
   ],
-  "lastUpdated": "2026-10-01T07:46:21.742Z"
+  "lastUpdated": "2026-10-01T08:14:40.803Z"
 }

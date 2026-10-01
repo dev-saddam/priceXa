@@ -6,6 +6,7 @@ import {
   saveDb,
   getProductById,
   getProducts,
+  updateProduct,
   getCompetitors,
   getTenants,
   getMatches,
@@ -14,7 +15,7 @@ import {
   addNotification,
   recalculateMarketPositions,
 } from './db';
-import { searchCompetitorProductCandidates, scrapeCompetitorUrl } from './crawler';
+import { searchCompetitorProductCandidates, scrapeCompetitorUrl, discoverProductUrlFromInternet } from './crawler';
 import { inngest, isInngestConfigured } from '@/inngest/client';
 import {
   isSupabaseConfigured,
@@ -212,6 +213,11 @@ export function cancelJob(jobId: string): boolean {
   return false;
 }
 
+export function clearQueueJobs(): void {
+  memoryJobs = [];
+  persistJobsToFile();
+}
+
 export function getQueueMetrics() {
   const queued = memoryJobs.filter((j) => j.status === 'queued').length;
   const processing = memoryJobs.filter((j) => j.status === 'processing').length;
@@ -362,6 +368,29 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
     if (job.status === 'cancelled') return;
 
     const prod = targetProducts[i];
+
+    // If product has no productUrl, search internet for its official / primary store URL and image
+    if (!prod.productUrl || prod.productUrl.trim() === '') {
+      await syncJobState(job, {
+        currentTaskDescription: `[${i + 1}/${targetProducts.length}] Searching internet for "${prod.name}" official URL...`,
+      });
+      try {
+        const discovered = await discoverProductUrlFromInternet(prod.name, prod.brand, prod.code, country);
+        if (discovered?.productUrl) {
+          prod.productUrl = discovered.productUrl;
+          if (discovered.imageUrl && (!prod.imageUrl || prod.imageUrl.includes('unsplash'))) {
+            prod.imageUrl = discovered.imageUrl;
+          }
+          await updateProduct(prod.id, {
+            productUrl: prod.productUrl,
+            imageUrl: prod.imageUrl,
+          });
+        }
+      } catch (err) {
+        console.warn(`[Queue] Failed discovering product URL for ${prod.name}:`, err);
+      }
+    }
+
     await syncJobState(job, {
       currentTaskDescription: `[${i + 1}/${targetProducts.length}] Auto-matching "${prod.name}" across ${competitors.length} stores...`,
       progress: Math.round((i / targetProducts.length) * 100),

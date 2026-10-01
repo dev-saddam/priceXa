@@ -817,3 +817,28 @@ export async function fetchSupabaseJobs(tenantId?: string): Promise<BackgroundJo
   return data.map(mapBackgroundJobFromDb);
 }
 
+export async function clearSupabaseDummyData(tenantId?: string): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+
+  try {
+    if (tenantId) {
+      await sb.from('competitor_matches').delete().eq('tenant_id', tenantId);
+      await sb.from('notifications').delete().eq('tenant_id', tenantId);
+      await sb.from('scan_jobs').delete().eq('tenant_id', tenantId);
+      await sb.from('background_jobs').delete().eq('tenant_id', tenantId);
+      await sb.from('products').delete().eq('tenant_id', tenantId);
+      await sb.from('competitors').update({ monitored_products_count: 0, avg_price_diff_percent: 0 }).eq('tenant_id', tenantId);
+    } else {
+      await sb.from('competitor_matches').delete().neq('id', 'keep_none_placeholder');
+      await sb.from('notifications').delete().neq('id', 'keep_none_placeholder');
+      await sb.from('scan_jobs').delete().neq('id', 'keep_none_placeholder');
+      await sb.from('background_jobs').delete().neq('id', 'keep_none_placeholder');
+      await sb.from('products').delete().neq('id', 'keep_none_placeholder');
+      await sb.from('competitors').update({ monitored_products_count: 0, avg_price_diff_percent: 0 }).neq('id', 'keep_none_placeholder');
+    }
+  } catch (err) {
+    console.error('[Supabase] clearSupabaseDummyData error:', err);
+  }
+}
+

@@ -44,7 +44,9 @@ import {
   insertSupabaseScanJob,
   fetchSupabasePlans,
   testSupabaseConnection,
+  clearSupabaseDummyData,
 } from './supabase';
+import { clearQueueJobs } from './queue';
 
 export interface DatabaseSchema {
   tenants: Tenant[];
@@ -246,6 +248,15 @@ export async function deleteProduct(id: string): Promise<boolean> {
 }
 
 export async function clearAllProducts(tenantId?: string): Promise<{ deletedCount: number }> {
+  if (isSupabaseConfigured()) {
+    try {
+      await clearSupabaseDummyData(tenantId);
+    } catch (err) {
+      console.warn('[Supabase] clearSupabaseDummyData error:', err);
+    }
+  }
+  clearQueueJobs();
+
   const db = await getDb();
   let deletedCount = 0;
   if (tenantId) {
@@ -254,17 +265,26 @@ export async function clearAllProducts(tenantId?: string): Promise<{ deletedCoun
     db.products = db.products.filter((p) => p.tenantId !== tenantId);
     db.matches = db.matches.filter((m) => !idsToDelete.has(m.productId));
     db.notifications = db.notifications.filter((n) => !n.productId || !idsToDelete.has(n.productId));
+    db.scanJobs = db.scanJobs ? db.scanJobs.filter((s) => s.tenantId !== tenantId) : [];
+    db.competitors.forEach((c) => {
+      if (c.tenantId === tenantId) {
+        c.monitoredProductsCount = 0;
+        c.avgPriceDiffPercent = 0;
+        c.lastScrapedAt = 'Never';
+      }
+    });
     await saveDb(db);
     await recalculateMarketPositions(tenantId);
   } else {
     deletedCount = db.products.length;
     db.products = [];
     db.matches = [];
-    db.notifications = db.notifications.filter((n) => n.productId === 'system');
+    db.notifications = [];
     db.scanJobs = [];
     db.competitors.forEach((c) => {
       c.monitoredProductsCount = 0;
       c.avgPriceDiffPercent = 0;
+      c.lastScrapedAt = 'Never';
     });
     await saveDb(db);
   }

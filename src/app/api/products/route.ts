@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getProducts, addProduct, clearAllProducts } from '@/lib/server/db';
+import { getProducts, addProduct, clearAllProducts, getTenants } from '@/lib/server/db';
 import { enqueueJob } from '@/lib/server/queue';
+import { discoverProductUrlFromInternet } from '@/lib/server/crawler';
 
 export async function GET(req: Request) {
   try {
@@ -18,6 +19,24 @@ export async function POST(req: Request) {
     const body = await req.json();
     if (!body.name || !body.code || !body.mrp) {
       return NextResponse.json({ success: false, error: 'Name, SKU code and MRP are required' }, { status: 400 });
+    }
+
+    // If productUrl is missing or empty, search the public internet to discover it
+    if (!body.productUrl || body.productUrl.trim() === '') {
+      try {
+        const tenants = await getTenants();
+        const tenant = tenants.find((t) => t.id === body.tenantId);
+        const country = tenant?.country || tenant?.countryCode || 'US';
+        const discovered = await discoverProductUrlFromInternet(body.name, body.brand, body.code, country);
+        if (discovered?.productUrl) {
+          body.productUrl = discovered.productUrl;
+          if (discovered.imageUrl && (!body.imageUrl || body.imageUrl.includes('unsplash'))) {
+            body.imageUrl = discovered.imageUrl;
+          }
+        }
+      } catch (err) {
+        console.warn('[Products API] Failed discovering product URL from internet on upload:', err);
+      }
     }
 
     const created = await addProduct(body);

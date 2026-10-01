@@ -1421,3 +1421,235 @@ export async function scrapeCompetitorUrl(
 ): Promise<ExtractedProductInfo> {
   return extractPriceAndStockFromCandidate(url, '', previousPrice, competitorDomain);
 }
+
+export interface DiscoveredProductDetails {
+  productUrl: string;
+  imageUrl?: string;
+  title?: string;
+  price?: number;
+  currency?: string;
+  brand?: string;
+  sourceDomain?: string;
+}
+
+/**
+ * Searches the public internet (DuckDuckGo, Google) to find the official or primary store URL for a product.
+ * Also extracts official product image and title metadata.
+ */
+export async function discoverProductUrlFromInternet(
+  productName: string,
+  brand?: string,
+  code?: string,
+  country: string = 'US'
+): Promise<DiscoveredProductDetails | null> {
+  const cleanBrand = (brand || '').trim();
+  const cleanName = productName.trim();
+  const cleanCode = (code || '').trim();
+
+  // 1. Build search query
+  const queryParts = [cleanName];
+  if (cleanCode && !cleanName.toLowerCase().includes(cleanCode.toLowerCase())) {
+    queryParts.push(cleanCode);
+  }
+  if (cleanBrand && !cleanName.toLowerCase().includes(cleanBrand.toLowerCase())) {
+    queryParts.unshift(cleanBrand);
+  }
+  const searchQuery = queryParts.join(' ');
+
+  console.log(`[Crawler] Searching internet for product URL: "${searchQuery}" (country: ${country})`);
+
+  // 2. Query DuckDuckGo HTML for live internet search results
+  const countryConfig = getCountryConfig(country);
+  const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}&kl=${countryConfig.ddgKl}`;
+
+  const candidates: Array<{ title: string; url: string; snippet: string }> = [];
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+    const res = await fetch(ddgUrl, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (res.ok) {
+      const html = await res.text();
+      const $ = cheerio.load(html);
+
+      $('.result').each((_, el) => {
+        const link = $(el).find('.result__title a');
+        let href = link.attr('href') || '';
+        if (href.includes('uddg=')) {
+          const m = href.match(/uddg=([^&]+)/);
+          if (m) href = decodeURIComponent(m[1]);
+        }
+        const title = link.text().trim();
+        const snippet = $(el).find('.result__snippet').text().trim();
+
+        if (href && !href.includes('duckduckgo.com') && !href.includes('bing.com/aclick') && !href.includes('google.com')) {
+          candidates.push({ title, url: href, snippet });
+        }
+      });
+    }
+  } catch (err: any) {
+    console.warn('[Crawler] DuckDuckGo search error during internet discovery:', err.message);
+  }
+
+  // Fallback to Google if DuckDuckGo returned few results
+  if (candidates.length < 2) {
+    try {
+      const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&num=5`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(googleUrl, {
+        signal: controller.signal,
+        headers: getFullBrowserHeaders(),
+      });
+      clearTimeout(timeoutId);
+
+      if (res.ok) {
+        const html = await res.text();
+        const $ = cheerio.load(html);
+
+        $('div.g, div.tF2Cxc, div.MjjYud').each((_, el) => {
+          const linkElem = $(el).find('a[href^="http"]').first();
+          let href = linkElem.attr('href') || '';
+          if (href.includes('/url?q=')) {
+            const m = href.match(/\/url\?q=([^&]+)/);
+            if (m) href = decodeURIComponent(m[1]);
+          }
+          const title = $(el).find('h3').text().trim() || linkElem.text().trim();
+          const snippet = $(el).find('div.VwiC3b, div.yXK7lf').text().trim();
+
+          if (href && title && !href.includes('google.com')) {
+            candidates.push({ title, url: href, snippet });
+          }
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Crawler] Google search error during internet discovery:', err.message);
+    }
+  }
+
+  if (candidates.length === 0) {
+    return null;
+  }
+
+  // 3. Score and prioritize candidate URLs
+  const brandKeywords = cleanBrand ? cleanBrand.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+
+  let bestCandidate: { title: string; url: string; snippet: string } | null = null;
+  let highestScore = -1;
+
+  for (const cand of candidates) {
+    let score = 0;
+    const urlLower = cand.url.toLowerCase();
+
+    // Check if URL is a product page
+    if (isProductUrl(cand.url)) {
+      score += 50;
+    }
+
+    // Check if URL matches the brand
+    if (brandKeywords && urlLower.includes(brandKeywords)) {
+      score += 40;
+    }
+
+    // Check title match percent
+    const matchPct = calculateTitleMatchPercent(cleanName, cand.title, cleanBrand, cleanCode);
+    score += matchPct;
+
+    if (score > highestScore) {
+      highestScore = score;
+      bestCandidate = cand;
+    }
+  }
+
+  if (!bestCandidate) {
+    bestCandidate = candidates[0];
+  }
+
+  const selectedUrl = bestCandidate.url;
+  let sourceDomain = '';
+  try {
+    sourceDomain = new URL(selectedUrl).hostname.replace(/^www\./, '');
+  } catch {}
+
+  // 4. Fetch the selected product page to extract canonical image, title, and price
+  let discoveredImage: string | undefined;
+  let canonicalUrl = selectedUrl;
+  let discoveredPrice: number | undefined;
+  let discoveredCurrency: string | undefined;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const pageRes = await fetch(selectedUrl, {
+      signal: controller.signal,
+      headers: getFullBrowserHeaders(),
+    });
+    clearTimeout(timeoutId);
+
+    if (pageRes.ok) {
+      const pageHtml = await pageRes.text();
+      const $ = cheerio.load(pageHtml);
+
+      const ogImage = $('meta[property="og:image"]').attr('content') ||
+                       $('meta[name="twitter:image"]').attr('content') ||
+                       $('link[rel="image_src"]').attr('href') ||
+                       $('img[itemprop="image"]').attr('src');
+      if (ogImage && ogImage.startsWith('http')) {
+        discoveredImage = ogImage;
+      }
+
+      const canon = $('link[rel="canonical"]').attr('href') || $('meta[property="og:url"]').attr('content');
+      if (canon && canon.startsWith('http')) {
+        canonicalUrl = canon;
+      }
+
+      $('script[type="application/ld+json"]').each((_, s) => {
+        try {
+          const raw = $(s).html() || '{}';
+          const data = JSON.parse(raw);
+          const items = Array.isArray(data) ? data : (data['@graph'] || [data]);
+          for (const item of items) {
+            if (item['@type'] === 'Product') {
+              if (!discoveredImage && item.image) {
+                const img = Array.isArray(item.image) ? item.image[0] : (item.image?.url || item.image);
+                if (typeof img === 'string' && img.startsWith('http')) discoveredImage = img;
+              }
+              if (item.offers) {
+                const offer = Array.isArray(item.offers) ? item.offers[0] : item.offers;
+                if (offer.price) {
+                  const p = parsePriceValue(offer.price);
+                  if (p > 0) discoveredPrice = p;
+                }
+                if (offer.priceCurrency) discoveredCurrency = offer.priceCurrency;
+              }
+            }
+          }
+        } catch {}
+      });
+    }
+  } catch (err: any) {
+    console.warn('[Crawler] Error enriching discovered product details:', err.message);
+  }
+
+  return {
+    productUrl: canonicalUrl,
+    imageUrl: discoveredImage,
+    title: bestCandidate.title,
+    price: discoveredPrice,
+    currency: discoveredCurrency,
+    brand: cleanBrand,
+    sourceDomain,
+  };
+}

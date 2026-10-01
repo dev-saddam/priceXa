@@ -2,6 +2,7 @@ import { inngest } from './client';
 import {
   getProductById,
   getProducts,
+  updateProduct,
   getCompetitors,
   getTenants,
   getMatches,
@@ -9,7 +10,7 @@ import {
   addScanJob,
   recalculateMarketPositions,
 } from '@/lib/server/db';
-import { searchCompetitorProductCandidates, scrapeCompetitorUrl } from '@/lib/server/crawler';
+import { searchCompetitorProductCandidates, scrapeCompetitorUrl, discoverProductUrlFromInternet } from '@/lib/server/crawler';
 import { CompetitorProductMatch, ScanJob } from '@/types';
 import { isSupabaseConfigured, updateSupabaseJob } from '@/lib/server/supabase';
 
@@ -128,6 +129,27 @@ export const batchAutoMatchFunction = inngest.createFunction(
 
     for (let i = 0; i < targetProducts.length; i++) {
       const prod = targetProducts[i];
+
+      // If product has no productUrl, search internet for its official / primary store URL and image
+      if (!prod.productUrl || prod.productUrl.trim() === '') {
+        await step.run(`discover-product-url-${prod.id}`, async () => {
+          try {
+            const discovered = await discoverProductUrlFromInternet(prod.name, prod.brand, prod.code, country);
+            if (discovered?.productUrl) {
+              prod.productUrl = discovered.productUrl;
+              if (discovered.imageUrl && (!prod.imageUrl || prod.imageUrl.includes('unsplash'))) {
+                prod.imageUrl = discovered.imageUrl;
+              }
+              await updateProduct(prod.id, {
+                productUrl: prod.productUrl,
+                imageUrl: prod.imageUrl,
+              });
+            }
+          } catch (err) {
+            console.warn(`[Inngest] Failed discovering product URL for ${prod.name}:`, err);
+          }
+        });
+      }
 
       const matchesCount = await step.run(`auto-match-product-${prod.id}`, async () => {
         const newMatches: CompetitorProductMatch[] = [];
