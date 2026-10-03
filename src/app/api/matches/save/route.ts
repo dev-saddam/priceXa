@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getProductById, saveProductMatches } from '@/lib/server/db';
+import { getProductById, saveProductMatches, ensureCompetitorExists } from '@/lib/server/db';
 import { CompetitorCandidateGroup, CompetitorProductMatch } from '@/types';
 
 export async function POST(req: Request) {
@@ -53,15 +53,26 @@ export async function POST(req: Request) {
         confidence = candidate.matchPercent;
       }
 
+      // Ensure the competitor store exists in the company's competitor catalog
+      const compRecord = await ensureCompetitorExists(effectiveTenantId, {
+        name: group.competitorName,
+        domain: group.competitorDomain,
+        logo: group.competitorLogo,
+        channelType: candidate?.channelType || group.channelType,
+        platform: candidate?.platform || group.platform,
+        baseUrl: `https://${group.competitorDomain}`,
+      });
+      const resolvedCompetitorId = compRecord.id;
+
       const priceDiff = Number((price - product.currentPrice).toFixed(2));
       const priceDiffPercent = Number(((priceDiff / product.currentPrice) * 100).toFixed(1));
 
       newMatches.push({
-        id: `match-${Date.now()}-${group.competitorId}-${Math.random().toString(36).substring(2, 6)}`,
+        id: `match-${Date.now()}-${resolvedCompetitorId}-${Math.random().toString(36).substring(2, 6)}`,
         tenantId: effectiveTenantId,
         productId,
-        competitorId: group.competitorId,
-        competitorName: group.competitorName,
+        competitorId: resolvedCompetitorId,
+        competitorName: compRecord.name || group.competitorName,
         competitorProductTitle: title,
         competitorProductUrl: url,
         matchConfidence: confidence,

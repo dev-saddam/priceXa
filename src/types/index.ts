@@ -163,6 +163,8 @@ export interface CompetitorCandidateGroup {
   selectedCandidateId: string | null; // id of CandidateMatchOption or 'custom' or null
   customUrl?: string;
   candidates: CandidateMatchOption[];
+  isDiscovered?: boolean;
+  isPreConfigured?: boolean;
 }
 
 export interface AlertRule {

@@ -173,6 +173,7 @@ function AppContent() {
       <AddProductModal
         isOpen={addProductModalOpen}
         onClose={() => setAddProductModalOpen(false)}
+        onOpenCandidateMatcher={handleOpenCandidateMatcher}
       />
 
       <AutoMatchModal

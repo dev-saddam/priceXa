@@ -7,10 +7,16 @@ import {
   getTenants,
   getMatches,
   saveProductMatches,
+  ensureCompetitorExists,
   addScanJob,
   recalculateMarketPositions,
 } from '@/lib/server/db';
-import { searchCompetitorProductCandidates, scrapeCompetitorUrl, discoverProductUrlFromInternet } from '@/lib/server/crawler';
+import {
+  searchCompetitorProductCandidates,
+  discoverAndGroupCompetitorCandidates,
+  scrapeCompetitorUrl,
+  discoverProductUrlFromInternet,
+} from '@/lib/server/crawler';
 import { CompetitorProductMatch, ScanJob } from '@/types';
 import { isSupabaseConfigured, updateSupabaseJob } from '@/lib/server/supabase';
 
@@ -53,14 +59,9 @@ export const searchCandidatesFunction = inngest.createFunction(
       };
     });
 
-    const groups = [];
-
-    for (const comp of competitors) {
-      const group = await step.run(`search-store-${comp.domain}`, async () => {
-        return await searchCompetitorProductCandidates(product, comp, country, currency);
-      });
-      groups.push(group);
-    }
+    const groups = await step.run('multi-page-candidate-search', async () => {
+      return await discoverAndGroupCompetitorCandidates(product, competitors, country, currency);
+    });
 
     if (jobId && isSupabaseConfigured()) {
       await updateSupabaseJob(jobId, {
@@ -152,47 +153,55 @@ export const batchAutoMatchFunction = inngest.createFunction(
       }
 
       const matchesCount = await step.run(`auto-match-product-${prod.id}`, async () => {
+        const groups = await discoverAndGroupCompetitorCandidates(prod, competitors, country, currency);
         const newMatches: CompetitorProductMatch[] = [];
 
-        for (const comp of competitors) {
-          const group = await searchCompetitorProductCandidates(prod, comp, country, currency);
+        for (const group of groups) {
           const topCand = group.candidates[0];
+          if (!topCand) continue;
 
-          if (topCand) {
-            const diff = Number((topCand.price - prod.currentPrice).toFixed(2));
-            const diffPercent = Number(((diff / prod.currentPrice) * 100).toFixed(1));
+          const compRecord = await ensureCompetitorExists(tenantId, {
+            name: group.competitorName,
+            domain: group.competitorDomain,
+            logo: group.competitorLogo,
+            channelType: topCand.channelType || group.channelType,
+            platform: topCand.platform || group.platform,
+            baseUrl: `https://${group.competitorDomain}`,
+          });
 
-            newMatches.push({
-              id: `match-inngest-${Date.now()}-${comp.id}-${Math.random().toString(36).substring(2, 6)}`,
-              tenantId,
-              productId: prod.id,
-              competitorId: comp.id,
-              competitorName: comp.name,
-              competitorProductTitle: topCand.title,
-              competitorProductUrl: topCand.url,
-              matchConfidence: topCand.matchPercent,
-              matchType: 'title_search',
-              currentPrice: topCand.price,
-              previousPrice: topCand.price,
-              regularPrice: topCand.regularPrice,
-              priceDiff: diff,
-              priceDiffPercent: diffPercent,
-              stockStatus: topCand.stockStatus || 'in_stock',
-              currency: topCand.currency || currency,
-              lastScrapedAt: new Date().toISOString(),
-              priceHistory: [
-                {
-                  timestamp: new Date().toISOString(),
-                  price: topCand.price,
-                  stockStatus: topCand.stockStatus || 'in_stock',
-                },
-              ],
-              status: 'confirmed',
-              channelType: topCand.channelType,
-              platform: topCand.platform,
-              sellerName: topCand.sellerName,
-            });
-          }
+          const diff = Number((topCand.price - prod.currentPrice).toFixed(2));
+          const diffPercent = Number(((diff / prod.currentPrice) * 100).toFixed(1));
+
+          newMatches.push({
+            id: `match-inngest-${Date.now()}-${compRecord.id}-${Math.random().toString(36).substring(2, 6)}`,
+            tenantId,
+            productId: prod.id,
+            competitorId: compRecord.id,
+            competitorName: compRecord.name,
+            competitorProductTitle: topCand.title,
+            competitorProductUrl: topCand.url,
+            matchConfidence: topCand.matchPercent,
+            matchType: 'title_search',
+            currentPrice: topCand.price,
+            previousPrice: topCand.price,
+            regularPrice: topCand.regularPrice,
+            priceDiff: diff,
+            priceDiffPercent: diffPercent,
+            stockStatus: topCand.stockStatus || 'in_stock',
+            currency: topCand.currency || currency,
+            lastScrapedAt: new Date().toISOString(),
+            priceHistory: [
+              {
+                timestamp: new Date().toISOString(),
+                price: topCand.price,
+                stockStatus: topCand.stockStatus || 'in_stock',
+              },
+            ],
+            status: 'confirmed',
+            channelType: topCand.channelType || group.channelType,
+            platform: topCand.platform || group.platform,
+            sellerName: topCand.sellerName,
+          });
         }
 
         if (newMatches.length > 0) {

@@ -11,11 +11,17 @@ import {
   getTenants,
   getMatches,
   saveProductMatches,
+  ensureCompetitorExists,
   addScanJob,
   addNotification,
   recalculateMarketPositions,
 } from './db';
-import { searchCompetitorProductCandidates, scrapeCompetitorUrl, discoverProductUrlFromInternet } from './crawler';
+import {
+  searchCompetitorProductCandidates,
+  discoverAndGroupCompetitorCandidates,
+  scrapeCompetitorUrl,
+  discoverProductUrlFromInternet,
+} from './crawler';
 import { inngest, isInngestConfigured } from '@/inngest/client';
 import {
   isSupabaseConfigured,
@@ -313,32 +319,17 @@ async function handleSearchCandidatesJob(job: BackgroundJob) {
   const currency = tenant?.currency || 'USD';
 
   const competitors = (await getCompetitors(tenantId)).filter((c) => c.status === 'active');
-  await syncJobState(job, { totalItems: competitors.length });
-
-  const groups = [];
-
-  for (let i = 0; i < competitors.length; i++) {
-    if (job.status === 'cancelled') return;
-
-    const comp = competitors[i];
-    await syncJobState(job, {
-      currentTaskDescription: `[${i + 1}/${competitors.length}] Searching Google & store listings on ${comp.name}...`,
-      progress: Math.round(((i + 0.2) / competitors.length) * 100),
-    });
-
-    const group = await searchCompetitorProductCandidates(product, comp, country, currency);
-    groups.push(group);
-
-    await syncJobState(job, {
-      processedItems: i + 1,
-      progress: Math.round(((i + 1) / competitors.length) * 100),
-    });
-
-    // Gentle pacing between store queries to prevent server load spikes
-    await sleep(REQUEST_PACING_MS);
-  }
 
   await syncJobState(job, {
+    currentTaskDescription: `Searching at least 2 pages of public web results for "${product.name}"...`,
+    progress: 30,
+  });
+
+  const groups = await discoverAndGroupCompetitorCandidates(product, competitors, country, currency);
+
+  await syncJobState(job, {
+    processedItems: groups.length,
+    progress: 100,
     resultSummary: { matchesSaved: groups.length },
     payload: { ...job.payload, results: groups },
   });
@@ -392,45 +383,53 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
     }
 
     await syncJobState(job, {
-      currentTaskDescription: `[${i + 1}/${targetProducts.length}] Auto-matching "${prod.name}" across ${competitors.length} stores...`,
+      currentTaskDescription: `[${i + 1}/${targetProducts.length}] Auto-matching "${prod.name}" across 2+ pages of web results...`,
       progress: Math.round((i / targetProducts.length) * 100),
     });
 
+    const groups = await discoverAndGroupCompetitorCandidates(prod, competitors, country, currency);
     const newMatches: CompetitorProductMatch[] = [];
 
-    for (const comp of competitors) {
-      const group = await searchCompetitorProductCandidates(prod, comp, country, currency);
+    for (const group of groups) {
       const topCand = group.candidates[0];
-      if (topCand) {
-        const diff = Number((topCand.price - prod.currentPrice).toFixed(2));
-        const diffPercent = Number(((diff / prod.currentPrice) * 100).toFixed(1));
+      if (!topCand) continue;
 
-        newMatches.push({
-          id: `match-bg-${Date.now()}-${comp.id}-${Math.random().toString(36).substring(2, 6)}`,
-          tenantId,
-          productId: prod.id,
-          competitorId: comp.id,
-          competitorName: comp.name,
-          competitorProductTitle: topCand.title,
-          competitorProductUrl: topCand.url,
-          matchConfidence: topCand.matchPercent,
-          matchType: 'title_search',
-          currentPrice: topCand.price,
-          previousPrice: topCand.price,
-          regularPrice: topCand.regularPrice,
-          priceDiff: diff,
-          priceDiffPercent: diffPercent,
-          stockStatus: topCand.stockStatus,
-          currency: currency || 'USD',
-          lastScrapedAt: 'Just now',
-          priceHistory: [{ timestamp: 'Today', price: topCand.price, stockStatus: topCand.stockStatus }],
-          status: 'confirmed',
-          channelType: topCand.channelType || group.channelType,
-          platform: topCand.platform || group.platform,
-          sellerName: topCand.sellerName,
-        });
-      }
-      await sleep(150);
+      const compRecord = await ensureCompetitorExists(tenantId, {
+        name: group.competitorName,
+        domain: group.competitorDomain,
+        logo: group.competitorLogo,
+        channelType: topCand.channelType || group.channelType,
+        platform: topCand.platform || group.platform,
+        baseUrl: `https://${group.competitorDomain}`,
+      });
+
+      const diff = Number((topCand.price - prod.currentPrice).toFixed(2));
+      const diffPercent = Number(((diff / prod.currentPrice) * 100).toFixed(1));
+
+      newMatches.push({
+        id: `match-bg-${Date.now()}-${compRecord.id}-${Math.random().toString(36).substring(2, 6)}`,
+        tenantId,
+        productId: prod.id,
+        competitorId: compRecord.id,
+        competitorName: compRecord.name,
+        competitorProductTitle: topCand.title,
+        competitorProductUrl: topCand.url,
+        matchConfidence: topCand.matchPercent,
+        matchType: 'title_search',
+        currentPrice: topCand.price,
+        previousPrice: topCand.price,
+        regularPrice: topCand.regularPrice,
+        priceDiff: diff,
+        priceDiffPercent: diffPercent,
+        stockStatus: topCand.stockStatus,
+        currency: currency || 'USD',
+        lastScrapedAt: 'Just now',
+        priceHistory: [{ timestamp: 'Today', price: topCand.price, stockStatus: topCand.stockStatus }],
+        status: 'confirmed',
+        channelType: topCand.channelType || group.channelType,
+        platform: topCand.platform || group.platform,
+        sellerName: topCand.sellerName,
+      });
     }
 
     if (newMatches.length > 0) {

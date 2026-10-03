@@ -9,6 +9,8 @@ import {
   AlertNotification,
   ScanJob,
   SubscriptionPlan,
+  ChannelType,
+  StorePlatform,
 } from '@/types';
 import {
   INITIAL_TENANTS,
@@ -502,6 +504,38 @@ export async function addCompetitor(
   db.competitors.push(newComp);
   await saveDb(db);
   return newComp;
+}
+
+export async function ensureCompetitorExists(
+  tenantId: string,
+  compInfo: {
+    name: string;
+    domain: string;
+    baseUrl?: string;
+    logo?: string;
+    channelType?: ChannelType;
+    platform?: StorePlatform;
+  }
+): Promise<Competitor> {
+  const cleanDomain = compInfo.domain.toLowerCase().replace(/^(?:https?:\/\/)?(?:www\.)?/, '').split('/')[0];
+  const existingList = await getCompetitors(tenantId);
+  const found = existingList.find(
+    (c) => c.domain.toLowerCase() === cleanDomain || c.domain.toLowerCase().includes(cleanDomain) || cleanDomain.includes(c.domain.toLowerCase())
+  );
+  if (found) {
+    return found;
+  }
+
+  return await addCompetitor({
+    tenantId,
+    name: compInfo.name,
+    domain: cleanDomain,
+    baseUrl: compInfo.baseUrl || `https://${cleanDomain}`,
+    logo: compInfo.logo || '🛒',
+    channelType: compInfo.channelType || 'marketplace',
+    platform: compInfo.platform || 'custom_brand',
+    status: 'active',
+  });
 }
 
 export async function deleteCompetitor(id: string): Promise<boolean> {

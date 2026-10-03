@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getProductById, getCompetitors, getTenants } from '@/lib/server/db';
-import { searchCompetitorProductCandidates } from '@/lib/server/crawler';
+import { discoverAndGroupCompetitorCandidates } from '@/lib/server/crawler';
 import { CompetitorCandidateGroup } from '@/types';
 
 export async function POST(req: Request) {
@@ -23,10 +23,8 @@ export async function POST(req: Request) {
     const currency = tenant?.currency || 'USD';
     const competitors = (await getCompetitors(effectiveTenantId)).filter((c) => c.status === 'active');
 
-    // Run searches for each competitor concurrently with country & currency targeting
-    const groups = await Promise.all(
-      competitors.map((comp) => searchCompetitorProductCandidates(product, comp, country, currency))
-    );
+    // Run multi-page internet search (at least 2 pages) and discover suggested competitor listings
+    const groups = await discoverAndGroupCompetitorCandidates(product, competitors, country, currency);
 
     return NextResponse.json({
       success: true,
@@ -34,6 +32,7 @@ export async function POST(req: Request) {
       productName: product.name,
       productCode: product.code,
       groups,
+      totalPagesSearched: 2,
     });
   } catch (error: any) {
     console.error('Error searching competitor matches:', error);

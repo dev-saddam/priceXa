@@ -2,14 +2,16 @@
 
 import React, { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { Product } from '@/types';
 import { X, PackagePlus, Sparkles, Globe, Loader2 } from 'lucide-react';
 
 interface AddProductModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenCandidateMatcher?: (product: Product) => void;
 }
 
-export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose }) => {
+export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClose, onOpenCandidateMatcher }) => {
   const { addProduct, currentTenant } = useApp();
 
   const [name, setName] = useState('');
@@ -66,7 +68,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent, matchNow: boolean = false) => {
     e.preventDefault();
     if (!name || !code || !mrp) return;
 
@@ -74,7 +76,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     const numPrice = parseFloat(currentPrice) || numMrp;
     const numCost = parseFloat(costPrice) || Math.round(numMrp * 0.5);
 
-    addProduct({
+    const created = await addProduct({
       name,
       brand: brand || currentTenant.name,
       code,
@@ -92,6 +94,12 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
     });
 
     onClose();
+
+    if (matchNow && onOpenCandidateMatcher && created) {
+      setTimeout(() => {
+        onOpenCandidateMatcher(created);
+      }, 300);
+    }
   };
 
   return (
@@ -286,7 +294,7 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
           </div>
 
           {/* Buttons */}
-          <div className="pt-3 border-t border-white/[0.06] flex items-center justify-end gap-2">
+          <div className="pt-3 border-t border-white/[0.06] flex items-center justify-end gap-2 flex-wrap">
             <button
               type="button"
               onClick={onClose}
@@ -295,10 +303,19 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({ isOpen, onClos
               Cancel
             </button>
             <button
-              type="submit"
-              className="btn-primary-clean px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all shadow-md cursor-pointer"
+              type="button"
+              onClick={(e) => handleSubmit(e, false)}
+              className="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
             >
-              Save Product
+              Save Product Only
+            </button>
+            <button
+              type="button"
+              onClick={(e) => handleSubmit(e, true)}
+              className="btn-primary-clean flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white transition-all shadow-md cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Save & Find Competitors
             </button>
           </div>
         </form>

@@ -687,6 +687,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (pData.success && pData.products) {
           setProducts(recalculateProductPositions(pData.products, updatedMatches));
         }
+
+        // Also refresh competitors as newly selected suggested competitors are registered
+        const cRes = await fetch(`/api/competitors?tenantId=${currentTenant.id}`);
+        const cData = await cRes.json();
+        if (cData.success && cData.competitors) {
+          setCompetitors(cData.competitors);
+        }
       }
     } catch (err) {
       console.error('Failed to save matches to backend:', err);

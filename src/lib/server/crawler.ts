@@ -974,6 +974,8 @@ export async function verifyAndExtractProductDetail(
 
     pageTitle = pageTitle
       .replace(/\s+/g, ' ')
+      .replace(/^Sold out\s*\|\s*/i, '')
+      .replace(/^Out of stock\s*\|\s*/i, '')
       .replace(/Amazon\.(?:com|co\.uk|in|de|ca|com\.au)\s*:\s*/i, '')
       .trim();
     const titleLower = pageTitle.toLowerCase();
@@ -992,10 +994,15 @@ export async function verifyAndExtractProductDetail(
       titleLower.includes('automated access') ||
       html.includes('api-services-support@amazon.com');
 
-    // Use page title if clean, or use candidate title extracted from live search results
-    let title = (pageTitle.length > 5 && !isAmazonBotTitle)
-      ? pageTitle
-      : (candidate.title || pageTitle);
+    // Compare candidate search card title with extracted page title for best match
+    const candTitleScore = candidate.title
+      ? calculateTitleMatchPercent(product.name, candidate.title, product.brand, product.code)
+      : 0;
+    const pageTitleScore = calculateTitleMatchPercent(product.name, pageTitle, product.brand, product.code);
+
+    let title = (candTitleScore >= pageTitleScore && candTitleScore >= 45 && candidate.title)
+      ? candidate.title
+      : (pageTitle.length > 5 && !isAmazonBotTitle ? pageTitle : (candidate.title || pageTitle));
 
     if (title.length < 3 || title.toLowerCase().startsWith('amazon.')) {
       console.log(`[Crawler] Discarding ${url}: Invalid title "${title}"`);
@@ -1653,3 +1660,397 @@ export async function discoverProductUrlFromInternet(
     sourceDomain,
   };
 }
+
+export function resolveStoreDetails(
+  rawDomain: string,
+  fullUrl: string = ''
+): {
+  name: string;
+  domain: string;
+  baseUrl: string;
+  logo: string;
+  channelType: ChannelType;
+  platform: StorePlatform;
+} {
+  const domain = rawDomain.toLowerCase().replace(/^(?:https?:\/\/)?(?:www\.)?/, '').split('/')[0];
+  const { channelType, platform } = detectStoreArchitecture(domain, fullUrl);
+
+  const KNOWN_STORE_PROFILES: Record<
+    string,
+    { name: string; logo: string; channelType?: ChannelType; platform?: StorePlatform }
+  > = {
+    'amazon.com': { name: 'Amazon US', logo: '🛒', channelType: 'marketplace', platform: 'amazon' },
+    'amazon.co.uk': { name: 'Amazon UK', logo: '🛒', channelType: 'marketplace', platform: 'amazon' },
+    'amazon.in': { name: 'Amazon India', logo: '🛒', channelType: 'marketplace', platform: 'amazon' },
+    'amazon.de': { name: 'Amazon Germany', logo: '🛒', channelType: 'marketplace', platform: 'amazon' },
+    'amazon.ca': { name: 'Amazon Canada', logo: '🛒', channelType: 'marketplace', platform: 'amazon' },
+    'amazon.com.au': { name: 'Amazon Australia', logo: '🛒', channelType: 'marketplace', platform: 'amazon' },
+    'walmart.com': { name: 'Walmart', logo: '🛒', channelType: 'marketplace', platform: 'walmart' },
+    'target.com': { name: 'Target', logo: '🎯', channelType: 'marketplace', platform: 'target' },
+    'bestbuy.com': { name: 'Best Buy', logo: '💻', channelType: 'marketplace', platform: 'bestbuy' },
+    'ebay.com': { name: 'eBay', logo: '🛍️', channelType: 'marketplace', platform: 'ebay' },
+    'flipkart.com': { name: 'Flipkart', logo: '🛍️', channelType: 'marketplace', platform: 'flipkart' },
+    'myntra.com': { name: 'Myntra', logo: '👗', channelType: 'marketplace', platform: 'custom_brand' },
+    'ajio.com': { name: 'AJIO', logo: '🛍️', channelType: 'marketplace', platform: 'custom_brand' },
+    'nykaa.com': { name: 'Nykaa', logo: '💄', channelType: 'marketplace', platform: 'custom_brand' },
+    'tatacliq.com': { name: 'Tata CLiQ', logo: '🏬', channelType: 'marketplace', platform: 'custom_brand' },
+    'skechers.com': { name: 'Skechers US', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'skechers.in': { name: 'Skechers India', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'skechers.co.uk': { name: 'Skechers UK', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'nike.com': { name: 'Nike Official', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'adidas.com': { name: 'Adidas Official', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'puma.com': { name: 'Puma Official', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'underarmour.com': { name: 'Under Armour', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'reebok.com': { name: 'Reebok Official', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
+    'famousfootwear.com': { name: 'Famous Footwear', logo: '👟', channelType: 'marketplace', platform: 'custom_brand' },
+    'zappos.com': { name: 'Zappos', logo: '👟', channelType: 'marketplace', platform: 'custom_brand' },
+    'dsw.com': { name: 'DSW Designer Shoe', logo: '👠', channelType: 'marketplace', platform: 'custom_brand' },
+    'kohls.com': { name: 'Kohl\'s', logo: '🏬', channelType: 'marketplace', platform: 'custom_brand' },
+    'macys.com': { name: 'Macy\'s', logo: '🏬', channelType: 'marketplace', platform: 'custom_brand' },
+    'nordstrom.com': { name: 'Nordstrom', logo: '🏬', channelType: 'marketplace', platform: 'custom_brand' },
+    'shoecarnival.com': { name: 'Shoe Carnival', logo: '👟', channelType: 'marketplace', platform: 'custom_brand' },
+    'marks.com': { name: 'Mark\'s', logo: '🏬', channelType: 'marketplace', platform: 'custom_brand' },
+    'academy.com': { name: 'Academy Sports', logo: '⚽', channelType: 'marketplace', platform: 'custom_brand' },
+    'decathlon.in': { name: 'Decathlon India', logo: '🏃', channelType: 'marketplace', platform: 'custom_brand' },
+    'decathlon.co.uk': { name: 'Decathlon UK', logo: '🏃', channelType: 'marketplace', platform: 'custom_brand' },
+  };
+
+  for (const [key, profile] of Object.entries(KNOWN_STORE_PROFILES)) {
+    if (domain === key || domain.endsWith('.' + key)) {
+      return {
+        domain,
+        baseUrl: `https://${domain}`,
+        name: profile.name,
+        logo: profile.logo,
+        channelType: profile.channelType || channelType,
+        platform: profile.platform || platform,
+      };
+    }
+  }
+
+  // Derive human-readable store name from domain
+  const domainParts = domain.split('.');
+  const primaryWord =
+    domainParts.length > 2 && (domainParts[domainParts.length - 2] === 'co' || domainParts[domainParts.length - 2] === 'com')
+      ? domainParts[0]
+      : domainParts[0];
+
+  const capitalized = primaryWord.charAt(0).toUpperCase() + primaryWord.slice(1);
+  const derivedName = channelType === 'brand_official' ? `${capitalized} Official Store` : capitalized;
+
+  return {
+    name: derivedName,
+    domain,
+    baseUrl: `https://${domain}`,
+    logo: channelType === 'brand_official' ? '🏷️' : '🛒',
+    channelType,
+    platform,
+  };
+}
+
+export interface MultiPageSearchResult {
+  page: number;
+  title: string;
+  url: string;
+  snippet: string;
+}
+
+/**
+ * Searches at least 2 pages of public search engine data (Page 1 and Page 2)
+ * for organic competitor product listings.
+ */
+export async function searchMultiPageOrganicResults(
+  query: string,
+  country: string = 'US',
+  minPages: number = 2
+): Promise<MultiPageSearchResult[]> {
+  const countryConfig = getCountryConfig(country);
+  const results: MultiPageSearchResult[] = [];
+  const seenUrls = new Set<string>();
+
+  const addResult = (page: number, title: string, url: string, snippet: string) => {
+    if (!url || !url.startsWith('http') || seenUrls.has(url)) return;
+    if (url.includes('duckduckgo.com') || url.includes('google.com') || url.includes('bing.com/aclick')) return;
+    if (!isProductUrl(url)) return;
+    seenUrls.add(url);
+    results.push({ page, title, url, snippet });
+  };
+
+  // 1. DuckDuckGo Page 1
+  let nextFormParams: URLSearchParams | null = null;
+  const ddgUrl1 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=${countryConfig.ddgKl}`;
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+    const res1 = await fetch(ddgUrl1, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': getRandomUserAgent(),
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+      },
+    });
+    clearTimeout(timeoutId);
+
+    if (res1.ok) {
+      const html1 = await res1.text();
+      const $1 = cheerio.load(html1);
+
+      $1('.result').each((_, el) => {
+        const link = $1(el).find('.result__title a');
+        let href = link.attr('href') || '';
+        if (href.includes('uddg=')) {
+          const m = href.match(/uddg=([^&]+)/);
+          if (m) href = decodeURIComponent(m[1]);
+        }
+        const title = link.text().trim();
+        const snippet = $1(el).find('.result__snippet').text().trim();
+        if (href && title) {
+          addResult(1, title, href, snippet);
+        }
+      });
+
+      // Extract DDG Next Page Form Tokens for Page 2
+      const nextForm = $1('form')
+        .filter((_, el) => {
+          return $1(el).find('input[name="s"]').length > 0 || $1(el).text().toLowerCase().includes('next');
+        })
+        .first();
+
+      if (nextForm.length > 0) {
+        const formData = new URLSearchParams();
+        nextForm.find('input[type="hidden"]').each((_, input) => {
+          const name = $1(input).attr('name');
+          const val = $1(input).attr('value') || '';
+          if (name) formData.append(name, val);
+        });
+        nextFormParams = formData;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Crawler] DuckDuckGo Page 1 search error:', err.message);
+  }
+
+  // 2. DuckDuckGo Page 2
+  if (minPages >= 2) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
+
+      let res2: Response | null = null;
+      if (nextFormParams) {
+        res2 = await fetch('https://html.duckduckgo.com/html/', {
+          method: 'POST',
+          body: nextFormParams,
+          signal: controller.signal,
+          headers: {
+            'User-Agent': getRandomUserAgent(),
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Referer': ddgUrl1,
+            'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+          },
+        });
+      } else {
+        // Fallback offset parameter for Page 2
+        const ddgUrl2 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=30&kl=${countryConfig.ddgKl}`;
+        res2 = await fetch(ddgUrl2, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': getRandomUserAgent(),
+            'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+          },
+        });
+      }
+
+      clearTimeout(timeoutId);
+
+      if (res2 && res2.ok) {
+        const html2 = await res2.text();
+        const $2 = cheerio.load(html2);
+        $2('.result').each((_, el) => {
+          const link = $2(el).find('.result__title a');
+          let href = link.attr('href') || '';
+          if (href.includes('uddg=')) {
+            const m = href.match(/uddg=([^&]+)/);
+            if (m) href = decodeURIComponent(m[1]);
+          }
+          const title = link.text().trim();
+          const snippet = $2(el).find('.result__snippet').text().trim();
+          if (href && title) {
+            addResult(2, title, href, snippet);
+          }
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Crawler] DuckDuckGo Page 2 search error:', err.message);
+    }
+  }
+
+  return results;
+}
+
+/**
+ * Core Multi-Page Competitor & Match Discovery:
+ * - Searches at least 2 pages of live public search results for the product.
+ * - Supports companies with pre-added competitors OR zero pre-added competitors.
+ * - Groups matches by competitor store, presenting a Suggested Competitor List.
+ * - Extracts live verified prices, stock, match confidence %, and confirmed match link.
+ */
+export async function discoverAndGroupCompetitorCandidates(
+  product: Product,
+  preConfiguredCompetitors: Competitor[] = [],
+  country: string = 'US',
+  currency: string = 'USD'
+): Promise<CompetitorCandidateGroup[]> {
+  const effectiveCountry = (country || 'US').toUpperCase();
+  const effectiveCurrency = currency || 'USD';
+
+  // 1. Build search query
+  let cleanName = product.name;
+  if (product.brand && cleanName.toLowerCase().startsWith(product.brand.toLowerCase())) {
+    cleanName = cleanName.slice(product.brand.length).trim();
+  }
+  const searchQuery = [product.brand, cleanName, product.code].filter(Boolean).join(' ');
+
+  console.log(`[Crawler] Multi-page competitor search (at least 2 pages) for "${searchQuery}" (${effectiveCountry})...`);
+
+  // 2. Fetch at least 2 pages of organic search results
+  const multiPageResults = await searchMultiPageOrganicResults(searchQuery, effectiveCountry, 2);
+  console.log(`[Crawler] Multi-page search returned ${multiPageResults.length} raw candidates across 2+ pages.`);
+
+  // Identify company's own domain to avoid suggesting own website as competitor
+  let userOwnDomain = '';
+  if (product.productUrl) {
+    try {
+      userOwnDomain = new URL(product.productUrl).hostname.replace(/^www\./, '').toLowerCase();
+    } catch {}
+  }
+
+  // 3. Group candidate URLs by store domain
+  const domainGroups: Map<string, Array<{ page: number; title: string; url: string; snippet: string }>> = new Map();
+
+  for (const r of multiPageResults) {
+    try {
+      const parsed = new URL(r.url);
+      const domain = parsed.hostname.replace(/^www\./, '').toLowerCase();
+
+      // Skip own domain
+      if (userOwnDomain && (domain === userOwnDomain || domain.includes(userOwnDomain) || userOwnDomain.includes(domain))) {
+        continue;
+      }
+
+      if (!domainGroups.has(domain)) {
+        domainGroups.set(domain, []);
+      }
+      domainGroups.get(domain)!.push(r);
+    } catch {}
+  }
+
+  // 4. Also ensure any preConfiguredCompetitors are covered
+  // If a pre-configured competitor didn't get results in the general search, query its domain specifically
+  const coveredDomains = new Set(Array.from(domainGroups.keys()));
+
+  for (const comp of preConfiguredCompetitors) {
+    const compDomain = adaptDomainForCountry(comp.domain, effectiveCountry).toLowerCase();
+    if (!coveredDomains.has(compDomain)) {
+      try {
+        const specificGroup = await searchCompetitorProductCandidates(product, comp, effectiveCountry, effectiveCurrency);
+        if (specificGroup.candidates.length > 0) {
+          const list = specificGroup.candidates.map((c) => ({
+            page: 1,
+            title: c.title,
+            url: c.url,
+            snippet: `Price: ${c.price}`,
+          }));
+          domainGroups.set(compDomain, list);
+        }
+      } catch (err: any) {
+        console.warn(`[Crawler] Fallback search for ${comp.name} failed:`, err.message);
+      }
+    }
+  }
+
+  // 5. Verify and extract product details for candidates in each domain group
+  const candidateGroups: CompetitorCandidateGroup[] = [];
+
+  for (const [domain, rawCandidates] of domainGroups.entries()) {
+    const storeDetails = resolveStoreDetails(domain, rawCandidates[0]?.url || '');
+
+    // Check if this domain matches a pre-configured competitor
+    const preComp = preConfiguredCompetitors.find((c) => {
+      const cd = c.domain.toLowerCase().replace(/^www\./, '');
+      return cd === domain || domain.includes(cd) || cd.includes(domain);
+    });
+
+    const competitorId = preComp ? preComp.id : `disc-${domain.replace(/[^a-z0-9]/g, '-')}`;
+    const competitorName = preComp ? preComp.name : storeDetails.name;
+    const competitorLogo = preComp?.logo || storeDetails.logo;
+    const channelType = preComp?.channelType || storeDetails.channelType;
+    const platform = preComp?.platform || storeDetails.platform;
+
+    const mockComp: Competitor = {
+      id: competitorId,
+      tenantId: product.tenantId,
+      name: competitorName,
+      domain,
+      baseUrl: `https://${domain}`,
+      logo: competitorLogo,
+      status: 'active',
+      monitoredProductsCount: 0,
+      avgPriceDiffPercent: 0,
+      lastScrapedAt: 'Never',
+      channelType,
+      platform,
+    };
+
+    // Verify candidates on this domain (HTTP 200, title match >= 45%, price > 0)
+    const verifiedOptions: CandidateMatchOption[] = [];
+    const deDuped = new Set<string>();
+
+    for (const raw of rawCandidates.slice(0, 4)) {
+      if (deDuped.has(raw.url)) continue;
+      deDuped.add(raw.url);
+
+      const verified = await verifyAndExtractProductDetail(raw, product, mockComp, effectiveCurrency);
+      if (verified && verified.matchPercent >= 45) {
+        verified.competitorId = competitorId;
+        verified.competitorName = competitorName;
+        verified.competitorDomain = domain;
+        verified.competitorLogo = competitorLogo;
+        verifiedOptions.push(verified);
+      }
+    }
+
+    if (verifiedOptions.length > 0) {
+      verifiedOptions.sort((a, b) => b.matchPercent - a.matchPercent);
+      verifiedOptions[0].isRecommended = true;
+
+      candidateGroups.push({
+        competitorId,
+        competitorName,
+        competitorDomain: domain,
+        competitorLogo,
+        channelType,
+        platform,
+        selectedCandidateId: verifiedOptions[0].id,
+        candidates: verifiedOptions,
+        isDiscovered: !preComp,
+        isPreConfigured: !!preComp,
+      });
+    }
+  }
+
+  // 6. Sort groups: pre-configured competitors first, then discovered competitors by top candidate match %
+  candidateGroups.sort((a, b) => {
+    if (a.isPreConfigured && !b.isPreConfigured) return -1;
+    if (!a.isPreConfigured && b.isPreConfigured) return 1;
+    const topA = a.candidates[0]?.matchPercent || 0;
+    const topB = b.candidates[0]?.matchPercent || 0;
+    return topB - topA;
+  });
+
+  return candidateGroups;
+}
+
