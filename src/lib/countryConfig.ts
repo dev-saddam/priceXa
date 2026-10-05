@@ -112,9 +112,25 @@ export const SUPPORTED_CURRENCIES: CurrencyOption[] = [
 
 export function getCountryConfig(countryCode?: string): CountryOption {
   if (!countryCode) return SUPPORTED_COUNTRIES.US;
-  const upper = countryCode.toUpperCase();
+  const upper = countryCode.toUpperCase().trim();
   if (upper === 'GB' || upper === 'UK') return SUPPORTED_COUNTRIES.UK;
-  return SUPPORTED_COUNTRIES[upper] || SUPPORTED_COUNTRIES.US;
+  if (SUPPORTED_COUNTRIES[upper]) return SUPPORTED_COUNTRIES[upper];
+
+  // Dynamic fallback for any user-selected country code (e.g. FR, JP, SG, etc.)
+  const lower = upper.toLowerCase();
+  return {
+    code: upper,
+    name: upper,
+    flag: '🌐',
+    defaultCurrency: 'USD',
+    currencySymbol: '$',
+    amazonDomain: `amazon.${lower === 'uk' ? 'co.uk' : lower}`,
+    ebayDomain: `ebay.${lower === 'uk' ? 'co.uk' : lower}`,
+    googleGl: lower,
+    googleHl: 'en',
+    ddgKl: `${lower}-en`,
+    description: `Regional targeting for ${upper}`,
+  };
 }
 
 export function getCurrencySymbol(currency?: string): string {

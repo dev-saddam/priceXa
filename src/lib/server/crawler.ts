@@ -252,7 +252,7 @@ export async function searchGoogleForDomain(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
     const res = await fetch(googleUrl, {
       signal: controller.signal,
@@ -269,7 +269,7 @@ export async function searchGoogleForDomain(
       const html = await res.text();
       const $ = cheerio.load(html);
 
-      $('div.g, div.tF2Cxc, div.MjjYud').each((_, el) => {
+      $('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
         const linkElem = $(el).find('a[href^="http"]').first();
         let href = linkElem.attr('href') || '';
 
@@ -278,8 +278,21 @@ export async function searchGoogleForDomain(
           if (match) href = decodeURIComponent(match[1]);
         }
 
-        const title = $(el).find('h3').text().trim() || linkElem.text().trim();
-        const snippet = $(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').text().trim();
+        const title = $(el).find('h3').first().text().trim() || linkElem.text().trim();
+        const snippet = $(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').first().text().trim();
+
+        if (href && href.includes(domain) && title && !href.includes('google.com')) {
+          results.push({ title, url: href, snippet });
+        }
+      });
+
+      $('a[href^="/url?q="], a[href*="google.com/url?q="]').each((_, el) => {
+        const rawHref = $(el).attr('href') || '';
+        const match = rawHref.match(/\/url\?q=([^&]+)/);
+        if (!match) return;
+        const href = decodeURIComponent(match[1]);
+        const title = $(el).find('h3').first().text().trim() || $(el).text().trim();
+        const snippet = $(el).closest('div').text().trim();
 
         if (href && href.includes(domain) && title && !href.includes('google.com')) {
           results.push({ title, url: href, snippet });
@@ -1517,7 +1530,10 @@ export async function discoverProductUrlFromInternet(
 
       const res = await fetch(googleUrl, {
         signal: controller.signal,
-        headers: getFullBrowserHeaders(),
+        headers: {
+          ...getFullBrowserHeaders(),
+          'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+        },
       });
       clearTimeout(timeoutId);
 
@@ -1525,15 +1541,28 @@ export async function discoverProductUrlFromInternet(
         const html = await res.text();
         const $ = cheerio.load(html);
 
-        $('div.g, div.tF2Cxc, div.MjjYud').each((_, el) => {
+        $('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
           const linkElem = $(el).find('a[href^="http"]').first();
           let href = linkElem.attr('href') || '';
           if (href.includes('/url?q=')) {
             const m = href.match(/\/url\?q=([^&]+)/);
             if (m) href = decodeURIComponent(m[1]);
           }
-          const title = $(el).find('h3').text().trim() || linkElem.text().trim();
-          const snippet = $(el).find('div.VwiC3b, div.yXK7lf').text().trim();
+          const title = $(el).find('h3').first().text().trim() || linkElem.text().trim();
+          const snippet = $(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').first().text().trim();
+
+          if (href && title && !href.includes('google.com')) {
+            candidates.push({ title, url: href, snippet });
+          }
+        });
+
+        $('a[href^="/url?q="], a[href*="google.com/url?q="]').each((_, el) => {
+          const rawHref = $(el).attr('href') || '';
+          const m = rawHref.match(/\/url\?q=([^&]+)/);
+          if (!m) return;
+          const href = decodeURIComponent(m[1]);
+          const title = $(el).find('h3').first().text().trim() || $(el).text().trim();
+          const snippet = $(el).closest('div').text().trim();
 
           if (href && title && !href.includes('google.com')) {
             candidates.push({ title, url: href, snippet });
@@ -1756,8 +1785,9 @@ export interface MultiPageSearchResult {
 }
 
 /**
- * Searches at least 2 pages of public search engine data (Page 1 and Page 2)
- * for organic competitor product listings.
+ * Searches at least 2 pages of live public search results (Page 1 and Page 2)
+ * for organic competitor product listings using Google (with gl & hl geolocation corresponding to user's selected country)
+ * and DuckDuckGo (with kl regional targeting).
  */
 export async function searchMultiPageOrganicResults(
   query: string,
@@ -1768,6 +1798,8 @@ export async function searchMultiPageOrganicResults(
   const results: MultiPageSearchResult[] = [];
   const seenUrls = new Set<string>();
 
+  console.log(`[Crawler] Multi-page search (Google gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl}, country=${countryConfig.code}) for: "${query}"`);
+
   const addResult = (page: number, title: string, url: string, snippet: string) => {
     if (!url || !url.startsWith('http') || seenUrls.has(url)) return;
     if (url.includes('duckduckgo.com') || url.includes('google.com') || url.includes('bing.com/aclick')) return;
@@ -1776,117 +1808,209 @@ export async function searchMultiPageOrganicResults(
     results.push({ page, title, url, snippet });
   };
 
-  // 1. DuckDuckGo Page 1
-  let nextFormParams: URLSearchParams | null = null;
-  const ddgUrl1 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=${countryConfig.ddgKl}`;
+  const parseGoogleHtml = (html: string, pageNum: number) => {
+    const $ = cheerio.load(html);
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4500);
-
-    const res1 = await fetch(ddgUrl1, {
-      signal: controller.signal,
-      headers: {
-        'User-Agent': getRandomUserAgent(),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
-      },
+    // Standard Google result container elements
+    $('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
+      const linkElem = $(el).find('a[href^="http"]').first();
+      let href = linkElem.attr('href') || '';
+      if (href.includes('/url?q=')) {
+        const m = href.match(/\/url\?q=([^&]+)/);
+        if (m) href = decodeURIComponent(m[1]);
+      }
+      const title = $(el).find('h3').first().text().trim() || linkElem.text().trim();
+      const snippet = $(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').first().text().trim();
+      if (href && title && !href.includes('google.com')) {
+        addResult(pageNum, title, href, snippet);
+      }
     });
-    clearTimeout(timeoutId);
 
-    if (res1.ok) {
-      const html1 = await res1.text();
-      const $1 = cheerio.load(html1);
+    // Fallback: direct Google redirect links in mobile / lite views
+    $('a[href^="/url?q="], a[href*="google.com/url?q="]').each((_, el) => {
+      const rawHref = $(el).attr('href') || '';
+      const m = rawHref.match(/\/url\?q=([^&]+)/);
+      if (!m) return;
+      const href = decodeURIComponent(m[1]);
+      const title = $(el).find('h3').first().text().trim() || $(el).text().trim();
+      const snippet = $(el).closest('div').text().trim();
+      if (href && title && !href.includes('google.com')) {
+        addResult(pageNum, title, href, snippet);
+      }
+    });
+  };
 
-      $1('.result').each((_, el) => {
-        const link = $1(el).find('.result__title a');
-        let href = link.attr('href') || '';
-        if (href.includes('uddg=')) {
-          const m = href.match(/uddg=([^&]+)/);
-          if (m) href = decodeURIComponent(m[1]);
-        }
-        const title = link.text().trim();
-        const snippet = $1(el).find('.result__snippet').text().trim();
-        if (href && title) {
-          addResult(1, title, href, snippet);
-        }
+  // 1. Google Search: Page 1 and Page 2 with country gl & hl
+  const searchGoogle = async () => {
+    const googleHeaders = {
+      'User-Agent': getRandomUserAgent(),
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+      'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+      'Upgrade-Insecure-Requests': '1',
+    };
+
+    // Google Page 1 (start=0)
+    try {
+      const googleUrl1 = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&pws=0&start=0&num=10`;
+      const controller1 = new AbortController();
+      const timeout1 = setTimeout(() => controller1.abort(), 4500);
+
+      const res1 = await fetch(googleUrl1, {
+        signal: controller1.signal,
+        headers: googleHeaders,
       });
+      clearTimeout(timeout1);
 
-      // Extract DDG Next Page Form Tokens for Page 2
-      const nextForm = $1('form')
-        .filter((_, el) => {
-          return $1(el).find('input[name="s"]').length > 0 || $1(el).text().toLowerCase().includes('next');
-        })
-        .first();
+      if (res1.ok) {
+        const html1 = await res1.text();
+        parseGoogleHtml(html1, 1);
+      }
+    } catch (err: any) {
+      console.warn(`[Crawler] Google Page 1 search (gl=${countryConfig.googleGl}) error:`, err.message);
+    }
 
-      if (nextForm.length > 0) {
-        const formData = new URLSearchParams();
-        nextForm.find('input[type="hidden"]').each((_, input) => {
-          const name = $1(input).attr('name');
-          const val = $1(input).attr('value') || '';
-          if (name) formData.append(name, val);
+    // Google Page 2 (start=10)
+    if (minPages >= 2) {
+      try {
+        const googleUrl2 = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&pws=0&start=10&num=10`;
+        const controller2 = new AbortController();
+        const timeout2 = setTimeout(() => controller2.abort(), 4500);
+
+        const res2 = await fetch(googleUrl2, {
+          signal: controller2.signal,
+          headers: googleHeaders,
         });
-        nextFormParams = formData;
+        clearTimeout(timeout2);
+
+        if (res2.ok) {
+          const html2 = await res2.text();
+          parseGoogleHtml(html2, 2);
+        }
+      } catch (err: any) {
+        console.warn(`[Crawler] Google Page 2 search (gl=${countryConfig.googleGl}) error:`, err.message);
       }
     }
-  } catch (err: any) {
-    console.warn('[Crawler] DuckDuckGo Page 1 search error:', err.message);
-  }
+  };
 
-  // 2. DuckDuckGo Page 2
-  if (minPages >= 2) {
+  // 2. DuckDuckGo Search: Page 1 and Page 2 with regional kl
+  const searchDuckDuckGo = async () => {
+    let nextFormParams: URLSearchParams | null = null;
+    const ddgUrl1 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=${countryConfig.ddgKl}`;
+
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4500);
+      const controller1 = new AbortController();
+      const timeout1 = setTimeout(() => controller1.abort(), 4500);
 
-      let res2: Response | null = null;
-      if (nextFormParams) {
-        res2 = await fetch('https://html.duckduckgo.com/html/', {
-          method: 'POST',
-          body: nextFormParams,
-          signal: controller.signal,
-          headers: {
-            'User-Agent': getRandomUserAgent(),
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Referer': ddgUrl1,
-            'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
-          },
-        });
-      } else {
-        // Fallback offset parameter for Page 2
-        const ddgUrl2 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=30&kl=${countryConfig.ddgKl}`;
-        res2 = await fetch(ddgUrl2, {
-          signal: controller.signal,
-          headers: {
-            'User-Agent': getRandomUserAgent(),
-            'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
-          },
-        });
-      }
+      const res1 = await fetch(ddgUrl1, {
+        signal: controller1.signal,
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+        },
+      });
+      clearTimeout(timeout1);
 
-      clearTimeout(timeoutId);
+      if (res1.ok) {
+        const html1 = await res1.text();
+        const $1 = cheerio.load(html1);
 
-      if (res2 && res2.ok) {
-        const html2 = await res2.text();
-        const $2 = cheerio.load(html2);
-        $2('.result').each((_, el) => {
-          const link = $2(el).find('.result__title a');
+        $1('.result').each((_, el) => {
+          const link = $1(el).find('.result__title a');
           let href = link.attr('href') || '';
           if (href.includes('uddg=')) {
             const m = href.match(/uddg=([^&]+)/);
             if (m) href = decodeURIComponent(m[1]);
           }
           const title = link.text().trim();
-          const snippet = $2(el).find('.result__snippet').text().trim();
+          const snippet = $1(el).find('.result__snippet').text().trim();
           if (href && title) {
-            addResult(2, title, href, snippet);
+            addResult(1, title, href, snippet);
           }
         });
+
+        // Extract DDG Next Page Form Tokens for Page 2
+        const nextForm = $1('form')
+          .filter((_, el) => {
+            return $1(el).find('input[name="s"]').length > 0 || $1(el).text().toLowerCase().includes('next');
+          })
+          .first();
+
+        if (nextForm.length > 0) {
+          const formData = new URLSearchParams();
+          nextForm.find('input[type="hidden"]').each((_, input) => {
+            const name = $1(input).attr('name');
+            const val = $1(input).attr('value') || '';
+            if (name) formData.append(name, val);
+          });
+          nextFormParams = formData;
+        }
       }
     } catch (err: any) {
-      console.warn('[Crawler] DuckDuckGo Page 2 search error:', err.message);
+      console.warn('[Crawler] DuckDuckGo Page 1 search error:', err.message);
     }
-  }
+
+    if (minPages >= 2) {
+      try {
+        const controller2 = new AbortController();
+        const timeout2 = setTimeout(() => controller2.abort(), 4500);
+
+        let res2: Response | null = null;
+        if (nextFormParams) {
+          res2 = await fetch('https://html.duckduckgo.com/html/', {
+            method: 'POST',
+            body: nextFormParams,
+            signal: controller2.signal,
+            headers: {
+              'User-Agent': getRandomUserAgent(),
+              'Content-Type': 'application/x-www-form-urlencoded',
+              'Referer': ddgUrl1,
+              'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+            },
+          });
+        } else {
+          // Fallback offset parameter for Page 2
+          const ddgUrl2 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=30&kl=${countryConfig.ddgKl}`;
+          res2 = await fetch(ddgUrl2, {
+            signal: controller2.signal,
+            headers: {
+              'User-Agent': getRandomUserAgent(),
+              'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+            },
+          });
+        }
+
+        clearTimeout(timeout2);
+
+        if (res2 && res2.ok) {
+          const html2 = await res2.text();
+          const $2 = cheerio.load(html2);
+          $2('.result').each((_, el) => {
+            const link = $2(el).find('.result__title a');
+            let href = link.attr('href') || '';
+            if (href.includes('uddg=')) {
+              const m = href.match(/uddg=([^&]+)/);
+              if (m) href = decodeURIComponent(m[1]);
+            }
+            const title = link.text().trim();
+            const snippet = $2(el).find('.result__snippet').text().trim();
+            if (href && title) {
+              addResult(2, title, href, snippet);
+            }
+          });
+        }
+      } catch (err: any) {
+        console.warn('[Crawler] DuckDuckGo Page 2 search error:', err.message);
+      }
+    }
+  };
+
+  // Run Google (with gl & hl) and DuckDuckGo in parallel for fast, multi-page organic coverage
+  await Promise.allSettled([searchGoogle(), searchDuckDuckGo()]);
 
   return results;
 }

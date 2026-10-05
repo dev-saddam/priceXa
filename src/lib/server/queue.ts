@@ -342,8 +342,8 @@ async function handleBatchAutoMatchJob(job: BackgroundJob) {
   const { productIds, tenantId } = job.payload;
   const tenants = await getTenants();
   const tenant = tenants.find((t) => t.id === tenantId);
-  const country = tenant?.country || tenant?.countryCode || 'IN';
-  const currency = tenant?.currency || 'INR';
+  const country = tenant?.country || tenant?.countryCode || 'US';
+  const currency = tenant?.currency || 'USD';
 
   const products = await getProducts(tenantId);
   const targetProducts = productIds?.length
