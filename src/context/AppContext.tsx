@@ -380,6 +380,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteProduct = async (id: string) => {
     setProducts((prev) => prev.filter((p) => p.id !== id));
     setMatches((prev) => prev.filter((m) => m.productId !== id));
+    setNotifications((prev) => prev.filter((n) => n.productId !== id));
 
     try {
       await fetch(`/api/products/${id}`, { method: 'DELETE' });
@@ -392,6 +393,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const idSet = new Set(ids);
     setProducts((prev) => prev.filter((p) => !idSet.has(p.id)));
     setMatches((prev) => prev.filter((m) => !idSet.has(m.productId)));
+    setNotifications((prev) => prev.filter((n) => !n.productId || !idSet.has(n.productId)));
 
     await Promise.allSettled(ids.map((id) => fetch(`/api/products/${id}`, { method: 'DELETE' })));
   };

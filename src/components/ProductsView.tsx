@@ -85,8 +85,9 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
   } | null>(null);
   const [serverMatches, setServerMatches] = useState<CompetitorProductMatch[]>([]);
   const [isLoadingServerData, setIsLoadingServerData] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Debounced server fetch when pagination or filters change
+  // Debounced server fetch when pagination, filters, or catalog data changes
   useEffect(() => {
     let isCancelled = false;
     setIsLoadingServerData(true);
@@ -146,6 +147,8 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     categoryFilter,
     positionFilter,
     matchingStatusFilter,
+    refreshKey,
+    products.length,
   ]);
 
   const tenantProducts = useMemo(
@@ -237,10 +240,72 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     setSelectedProductIds([]);
   };
 
-  const handleBulkDelete = () => {
+  const handleDeleteSingleProduct = async (id: string) => {
+    // 1. Instant optimistic UI removal from local server-paginated state
+    setServerData((prev) => {
+      if (!prev) return prev;
+      const remaining = prev.products.filter((p) => p.id !== id);
+      const newTotal = Math.max(0, prev.total - 1);
+      return {
+        ...prev,
+        products: remaining,
+        total: newTotal,
+        totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+      };
+    });
+    setSelectedProductIds((prev) => prev.filter((i) => i !== id));
+
+    // 2. Perform backend delete & AppContext delete
+    await deleteProduct(id);
+
+    // 3. Trigger background refresh to keep totals and pagination in perfect sync
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleBulkDelete = async () => {
     if (selectedProductIds.length === 0) return;
-    bulkDeleteProducts(selectedProductIds);
+    const toDelete = [...selectedProductIds];
+    const deleteSet = new Set(toDelete);
     setSelectedProductIds([]);
+
+    // 1. Instant optimistic UI removal
+    setServerData((prev) => {
+      if (!prev) return prev;
+      const remaining = prev.products.filter((p) => !deleteSet.has(p.id));
+      const newTotal = Math.max(0, prev.total - toDelete.length);
+      return {
+        ...prev,
+        products: remaining,
+        total: newTotal,
+        totalPages: Math.max(1, Math.ceil(newTotal / pageSize)),
+      };
+    });
+
+    // 2. Backend delete & AppContext delete
+    await bulkDeleteProducts(toDelete);
+
+    // 3. Trigger background sync
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleClearAll = async () => {
+    if (window.confirm('Are you sure you want to remove all product data?')) {
+      // 1. Instant optimistic UI wipe
+      setServerData({
+        products: [],
+        total: 0,
+        totalPages: 1,
+        stats: { total: 0, fullyMatched: 0, partiallyMatched: 0, underCut: 0 },
+        categories: [],
+      });
+      setSelectedProductIds([]);
+
+      // 2. Backend delete & AppContext delete
+      await clearAllProducts();
+
+      // 3. Trigger background sync
+      setRefreshKey((k) => k + 1);
+    }
   };
 
   const handleExportCsv = () => {
@@ -277,10 +342,18 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
     setEditPrice(product.currentPrice.toString());
   };
 
-  const saveEditPrice = (productId: string) => {
+  const saveEditPrice = async (productId: string) => {
     const newPrice = parseFloat(editPrice);
     if (!isNaN(newPrice) && newPrice > 0) {
-      updateProduct(productId, { currentPrice: newPrice });
+      setServerData((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          products: prev.products.map((p) => (p.id === productId ? { ...p, currentPrice: newPrice } : p)),
+        };
+      });
+      await updateProduct(productId, { currentPrice: newPrice });
+      setRefreshKey((k) => k + 1);
     }
     setEditingId(null);
   };
@@ -340,11 +413,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
 
           {tenantProducts.length > 0 && (
             <button
-              onClick={() => {
-                if (window.confirm('Are you sure you want to remove all product data?')) {
-                  clearAllProducts();
-                }
-              }}
+              onClick={handleClearAll}
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/25 text-xs font-semibold transition-colors cursor-pointer"
               title="Remove all products from this catalog"
             >
@@ -846,7 +915,7 @@ export const ProductsView: React.FC<ProductsViewProps> = ({
                             </button>
                           )}
                           <button
-                            onClick={() => deleteProduct(product.id)}
+                            onClick={() => handleDeleteSingleProduct(product.id)}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
                             title="Delete SKU"
                           >
