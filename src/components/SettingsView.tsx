@@ -22,7 +22,6 @@ import {
 import { 
   COUNTRY_LIST,
   SUPPORTED_COUNTRIES, 
-  SUPPORTED_CURRENCIES, 
   getCountryConfig, 
   getCurrencySymbol,
   adaptDomainForCountry
@@ -34,7 +33,6 @@ export const SettingsView: React.FC = () => {
   const [country, setCountry] = useState<string>(
     currentTenant.country || currentTenant.countryCode || 'IN'
   );
-  const [currency, setCurrency] = useState<string>(currentTenant.currency || 'INR');
   const [contactEmail, setContactEmail] = useState(currentTenant.contactEmail || '');
   const [webhookUrl, setWebhookUrl] = useState(currentTenant.webhookUrl || '');
   const [emailAlerts, setEmailAlerts] = useState(currentTenant.emailAlertsEnabled ?? true);
@@ -61,7 +59,6 @@ export const SettingsView: React.FC = () => {
   // Sync state if currentTenant changes (e.g., tenant switch)
   useEffect(() => {
     setCountry(currentTenant.country || currentTenant.countryCode || 'IN');
-    setCurrency(currentTenant.currency || 'INR');
     setContactEmail(currentTenant.contactEmail || '');
     setWebhookUrl(currentTenant.webhookUrl || '');
     setEmailAlerts(currentTenant.emailAlertsEnabled ?? true);
@@ -69,12 +66,11 @@ export const SettingsView: React.FC = () => {
 
   const handleCountryChange = (newCountryCode: string) => {
     setCountry(newCountryCode);
-    const countryCfg = getCountryConfig(newCountryCode);
-    setCurrency(countryCfg.defaultCurrency);
   };
 
   const selectedCountryConfig = getCountryConfig(country);
-  const activeCurrencySymbol = getCurrencySymbol(currency);
+  const activeCurrency = selectedCountryConfig.defaultCurrency;
+  const activeCurrencySymbol = selectedCountryConfig.currencySymbol;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -82,12 +78,10 @@ export const SettingsView: React.FC = () => {
     setSuccessMsg(null);
     setErrorMsg(null);
 
-    const symbol = getCurrencySymbol(currency);
-
     const result = await updateTenantSettings(currentTenant.id, {
       country,
-      currency,
-      currencySymbol: symbol,
+      currency: activeCurrency,
+      currencySymbol: activeCurrencySymbol,
       contactEmail,
       webhookUrl,
       emailAlertsEnabled: emailAlerts,
@@ -97,7 +91,7 @@ export const SettingsView: React.FC = () => {
 
     if (result.success) {
       setSuccessMsg(
-        `Workspace updated! Target market set to ${selectedCountryConfig.name} (${symbol} ${currency}). Competitor search and domain routes updated.`
+        `Workspace updated! Company country set to ${selectedCountryConfig.name}. Currency automatically set to ${activeCurrencySymbol} ${activeCurrency} and competitor search routes configured.`
       );
       setTimeout(() => setSuccessMsg(null), 5000);
     } else {
@@ -113,7 +107,7 @@ export const SettingsView: React.FC = () => {
           Workspace Settings: {currentTenant.name}
         </h1>
         <p className="text-xs text-slate-400 mt-0.5">
-          Configure target search country, store currency, notification channels, and automated crawl settings
+          Configure company country, notification channels, and automated crawl settings
         </p>
       </div>
 
@@ -134,27 +128,27 @@ export const SettingsView: React.FC = () => {
       )}
 
       <form onSubmit={handleSave} className="space-y-6">
-        {/* Country & Regional Search Settings */}
+        {/* Company Country Settings */}
         <div className="p-6 rounded-3xl glass-card space-y-5 border border-white/[0.08]">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">
               <Globe2 className="w-4 h-4 text-cyan-400" />
-              Target Search Country & Currency
+              Company Country & Market
             </h2>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
-              {selectedCountryConfig.flag} {selectedCountryConfig.name} Search Engine
+              {selectedCountryConfig.flag} {selectedCountryConfig.name}
             </span>
           </div>
 
           <p className="text-xs text-slate-400 leading-relaxed">
-            Changing your target country adapts all competitor queries. For instance, selecting <strong>United Kingdom (UK)</strong> will automatically direct Google & store crawler searches to <span className="text-cyan-300 font-mono">amazon.co.uk</span> and <span className="text-cyan-300 font-mono">ebay.co.uk</span> with prices parsed in <strong>British Pounds (£ GBP)</strong>.
+            Select your company&apos;s home country. All competitor crawling, regional search engines (Google & DuckDuckGo), marketplace domains, and pricing currency are automatically configured based on this country.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-xs font-semibold text-slate-200 mb-1.5 flex items-center gap-1.5">
                 <Globe2 className="w-3.5 h-3.5 text-cyan-400" />
-                Target Country / Region
+                Company Country
               </label>
               <select
                 value={country}
@@ -167,61 +161,35 @@ export const SettingsView: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Regional search parameters: Google (<code>gl={selectedCountryConfig.googleGl}</code>, <code>hl={selectedCountryConfig.googleHl}</code>), DuckDuckGo (<code>{selectedCountryConfig.ddgKl}</code>)
-              </p>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-200 mb-1.5 flex items-center gap-1.5">
-                <Coins className="w-3.5 h-3.5 text-amber-400" />
-                Store Currency
-              </label>
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/[0.12] text-slate-100 text-xs focus:border-cyan-500 focus:outline-none transition-colors cursor-pointer"
-              >
-                {SUPPORTED_CURRENCIES.map((cur) => (
-                  <option key={cur.code} value={cur.code} className="bg-slate-900 text-white">
-                    {cur.symbol} - {cur.code} ({cur.name})
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-slate-500 mt-1">
-                Active symbol across all tables & alerts: <strong className="text-amber-400 font-mono">{activeCurrencySymbol}</strong>
-              </p>
-            </div>
-          </div>
+            {/* Automatically Configured Parameters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                  Auto-Assigned Currency
+                </div>
+                <div className="text-xs font-bold text-amber-400 mt-1 flex items-center gap-1.5">
+                  <span className="text-base">{activeCurrencySymbol}</span>
+                  <span>{activeCurrency}</span>
+                </div>
+              </div>
 
-          {/* Regional Adaptation Preview Badge */}
-          <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/[0.06] space-y-2.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-semibold text-slate-300 flex items-center gap-1.5">
-                <Search className="w-3.5 h-3.5 text-cyan-400" />
-                Live Regional Search Configuration:
-              </span>
-              <span className="text-[11px] font-mono text-cyan-300">
-                {selectedCountryConfig.flag} {selectedCountryConfig.name}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
-              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Marketplace Domain</div>
-                <div className="text-xs font-mono font-semibold text-slate-200 mt-0.5">
+              <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                  Marketplace Domain
+                </div>
+                <div className="text-xs font-mono font-semibold text-slate-200 mt-1">
                   {selectedCountryConfig.amazonDomain}
                 </div>
               </div>
-              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Secondary Store</div>
-                <div className="text-xs font-mono font-semibold text-slate-200 mt-0.5">
-                  {selectedCountryConfig.ebayDomain}
+
+              <div className="p-3 rounded-2xl bg-slate-950/60 border border-white/[0.06]">
+                <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                  Search Geolocation
                 </div>
-              </div>
-              <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Search Geolocation</div>
-                <div className="text-xs font-mono font-semibold text-emerald-400 mt-0.5">
-                  gl={selectedCountryConfig.googleGl} ({activeCurrencySymbol})
+                <div className="text-xs font-mono font-semibold text-emerald-400 mt-1">
+                  gl={selectedCountryConfig.googleGl} ({selectedCountryConfig.ddgKl})
                 </div>
               </div>
             </div>
