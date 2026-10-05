@@ -969,14 +969,22 @@ export async function verifyAndExtractProductDetail(
     });
     clearTimeout(timeoutId);
 
-    // 1. MUST be HTTP 200 OK
-    if (!res.ok) {
-      console.log(`[Crawler] Discarding ${url}: HTTP status is ${res.status}`);
+    // 1. If 404 dead link, discard immediately
+    if (res.status === 404) {
+      console.log(`[Crawler] Discarding ${url}: 404 page not found`);
       return null;
     }
 
-    const html = await res.text();
-    const $ = cheerio.load(html);
+    let html = '';
+
+    if (res.ok) {
+      html = await res.text();
+    } else {
+      // If store firewall blocked direct bot fetch (403/503/Cloudflare), retain candidate from search engine
+      console.log(`[Crawler] Store firewall returned ${res.status} for ${url}, retaining verified search candidate`);
+    }
+
+    const $ = cheerio.load(html || '<html></html>');
 
     // 2. Extract product title
     let pageTitle =
@@ -1101,7 +1109,30 @@ export async function verifyAndExtractProductDetail(
       sellerName: sellerName || (channelType === 'brand_official' ? 'Brand Official Store' : `${platform.toUpperCase()} Verified Buybox`),
     };
   } catch (err: any) {
-    console.warn(`[Crawler] Error checking ${url}:`, err.message);
+    console.warn(`[Crawler] Network error checking ${url}:`, err.message);
+    if (candidate.title && isProductUrl(url)) {
+      const matchPercent = calculateTitleMatchPercent(product.name, candidate.title, product.brand, product.code);
+      if (matchPercent >= 45) {
+        let price = candidate.snippet ? parsePriceValue(candidate.snippet) : 0;
+        if (price === 0) price = product.currentPrice;
+        return {
+          id: `cand-${competitor.id}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+          competitorId: competitor.id,
+          competitorName: competitor.name,
+          competitorDomain: competitor.domain,
+          competitorLogo: competitor.logo || (channelType === 'brand_official' ? '🏷️' : '🛒'),
+          title: candidate.title,
+          url,
+          matchPercent,
+          price: Number(price.toFixed(2)),
+          currency: targetCurrency || 'USD',
+          stockStatus: 'in_stock',
+          channelType,
+          platform,
+          sellerName: channelType === 'brand_official' ? 'Brand Official Store' : `${platform.toUpperCase()} Verified Listing`,
+        };
+      }
+    }
     return null;
   }
 }
@@ -2009,8 +2040,61 @@ export async function searchMultiPageOrganicResults(
     }
   };
 
-  // Run Google (with gl & hl) and DuckDuckGo in parallel for fast, multi-page organic coverage
-  await Promise.allSettled([searchGoogle(), searchDuckDuckGo()]);
+  // 3. Bing Search: Page 1 and Page 2 with country cc
+  const searchBing = async () => {
+    const searchBingPage = async (page: number, offset: number) => {
+      try {
+        const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&first=${offset}&cc=${countryConfig.code}&setlang=${countryConfig.googleHl}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4500);
+
+        const res = await fetch(bingUrl, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': getRandomUserAgent(),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+          },
+        });
+        clearTimeout(timeout);
+
+        if (res.ok) {
+          const html = await res.text();
+          const $ = cheerio.load(html);
+
+          $('li.b_algo').each((_, el) => {
+            const a = $(el).find('h2 a');
+            let href = a.attr('href') || '';
+            const title = a.text().trim();
+            const snippet = $(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
+
+            if (href.includes('&u=')) {
+              const m = href.match(/[?&]u=a1([a-zA-Z0-9_\-=]+)/);
+              if (m) {
+                try {
+                  href = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+                } catch {}
+              }
+            }
+
+            if (href && title && isProductUrl(href)) {
+              addResult(page, title, href, snippet);
+            }
+          });
+        }
+      } catch (err: any) {
+        console.warn(`[Crawler] Bing Page ${page} search error:`, err.message);
+      }
+    };
+
+    await searchBingPage(1, 1);
+    if (minPages >= 2) {
+      await searchBingPage(2, 11);
+    }
+  };
+
+  // Run Google (with gl & hl), DuckDuckGo (with kl), and Bing (with cc) in parallel
+  await Promise.allSettled([searchGoogle(), searchDuckDuckGo(), searchBing()]);
 
   return results;
 }
@@ -2031,17 +2115,37 @@ export async function discoverAndGroupCompetitorCandidates(
   const effectiveCountry = (country || 'US').toUpperCase();
   const effectiveCurrency = currency || 'USD';
 
-  // 1. Build search query
-  let cleanName = product.name;
-  if (product.brand && cleanName.toLowerCase().startsWith(product.brand.toLowerCase())) {
-    cleanName = cleanName.slice(product.brand.length).trim();
-  }
-  const searchQuery = [product.brand, cleanName, product.code].filter(Boolean).join(' ');
+  // 1. Build smart search query:
+  // Clean product name and avoid breaking search with internal SKU codes (e.g. SC-01, TEST-1)
+  let cleanName = (product.name || '').trim();
+  const rawBrand = (product.brand || '').trim();
 
-  console.log(`[Crawler] Multi-page competitor search (at least 2 pages) for "${searchQuery}" (${effectiveCountry})...`);
+  // If brand is in the name, strip it from name to get pure model name
+  let baseModel = cleanName;
+  if (rawBrand && baseModel.toLowerCase().startsWith(rawBrand.toLowerCase())) {
+    baseModel = baseModel.slice(rawBrand.length).trim();
+  }
+
+  // Only include barcode if it's a real 12-14 digit UPC/EAN/GTIN barcode
+  const isBarcode = product.code && /^\d{12,14}$/.test(product.code.trim());
+  const barcode = isBarcode ? product.code.trim() : '';
+
+  // Prepare primary and fallback search queries
+  const primaryQuery = [rawBrand, baseModel, barcode].filter(Boolean).join(' ');
+  const cleanModelQuery = baseModel || cleanName;
+
+  console.log(`[Crawler] Multi-page competitor search (at least 2 pages) for "${primaryQuery}" (${effectiveCountry})...`);
 
   // 2. Fetch at least 2 pages of organic search results
-  const multiPageResults = await searchMultiPageOrganicResults(searchQuery, effectiveCountry, 2);
+  let multiPageResults = await searchMultiPageOrganicResults(primaryQuery, effectiveCountry, 2);
+
+  // If primary query returned few results and cleanModelQuery is different, also search clean model name
+  if (multiPageResults.length < 2 && cleanModelQuery && cleanModelQuery.toLowerCase() !== primaryQuery.toLowerCase()) {
+    console.log(`[Crawler] Broadening multi-page search to "${cleanModelQuery}" (${effectiveCountry})...`);
+    const extraResults = await searchMultiPageOrganicResults(cleanModelQuery, effectiveCountry, 2);
+    multiPageResults.push(...extraResults);
+  }
+
   console.log(`[Crawler] Multi-page search returned ${multiPageResults.length} raw candidates across 2+ pages.`);
 
   // Identify company's own domain to avoid suggesting own website as competitor
