@@ -91,6 +91,34 @@ export function isProductUrl(url: string): boolean {
     decoded = decodeURIComponent(url);
   } catch {}
 
+  // Reject non-commercial, Q&A, forum, and social media domains
+  try {
+    const hostname = new URL(decoded).hostname.toLowerCase();
+    const nonCommerceDomains = [
+      'goo.ne.jp',
+      'wikipedia.org',
+      'quora.com',
+      'reddit.com',
+      'answers.com',
+      'medium.com',
+      'pinterest.com',
+      'youtube.com',
+      'twitter.com',
+      'x.com',
+      'facebook.com',
+      'instagram.com',
+      'tiktok.com',
+      'linkedin.com',
+      'tumblr.com',
+      'github.com',
+      'stackoverflow.com',
+      'yahoo.co.jp',
+    ];
+    if (nonCommerceDomains.some((d) => hostname === d || hostname.endsWith('.' + d))) {
+      return false;
+    }
+  } catch {}
+
   const invalidPatterns = [
     /\/category\b/i,
     /\/categories\b/i,
@@ -108,6 +136,15 @@ export function isProductUrl(url: string): boolean {
     /\/help\b/i,
     /\/about\b/i,
     /\/contact\b/i,
+    /\/qa\b/i,
+    /\/questions?\b/i,
+    /\/forum\b/i,
+    /\/forums\b/i,
+    /\/community\b/i,
+    /\/discussion(s)?\b/i,
+    /\/thread(s)?\b/i,
+    /\/article(s)?\b/i,
+    /\/news\b/i,
     /\/(privacy|terms|faq|sitemap|index)\.html?/i,
     /\.(pdf|jpg|jpeg|png|gif|svg|css|js)(\?.*)?$/i,
   ];
@@ -1597,7 +1634,7 @@ export async function discoverProductUrlFromInternet(
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 8500);
 
     console.log(`[Crawler] [DuckDuckGo Discover] 🔎 GET ${ddgUrl} (country: ${countryConfig.code}, kl=${countryConfig.ddgKl})`);
 
@@ -1655,7 +1692,7 @@ export async function discoverProductUrlFromInternet(
       console.log(`[Crawler] [Google Discover] 🔎 Initiating fallback: ${googleUrl} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl})`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
 
       const res = await fetch(googleUrl, {
         signal: controller.signal,
@@ -1725,7 +1762,7 @@ export async function discoverProductUrlFromInternet(
       console.log(`[Crawler] [Bing Discover] 🔎 Initiating fallback: ${bingUrl} (cc=${countryConfig.code})`);
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const timeoutId = setTimeout(() => controller.abort(), 7000);
 
       const res = await fetch(bingUrl, {
         signal: controller.signal,
@@ -2059,7 +2096,7 @@ export async function searchMultiPageOrganicResults(
       console.log(`[Crawler] [Google Page 1] 🔎 GET ${googleUrl1} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl}, start=0)`);
 
       const controller1 = new AbortController();
-      const timeout1 = setTimeout(() => controller1.abort(), 4500);
+      const timeout1 = setTimeout(() => controller1.abort(), 8000);
 
       const res1 = await fetch(googleUrl1, {
         signal: controller1.signal,
@@ -2098,7 +2135,7 @@ export async function searchMultiPageOrganicResults(
         console.log(`[Crawler] [Google Page 2] 🔎 GET ${googleUrl2} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl}, start=10)`);
 
         const controller2 = new AbortController();
-        const timeout2 = setTimeout(() => controller2.abort(), 4500);
+        const timeout2 = setTimeout(() => controller2.abort(), 8000);
 
         const res2 = await fetch(googleUrl2, {
           signal: controller2.signal,
@@ -2141,7 +2178,7 @@ export async function searchMultiPageOrganicResults(
       console.log(`[Crawler] [DuckDuckGo Page 1] 🔎 GET ${ddgUrl1} (country: ${countryConfig.code}, kl=${countryConfig.ddgKl})`);
 
       const controller1 = new AbortController();
-      const timeout1 = setTimeout(() => controller1.abort(), 4500);
+      const timeout1 = setTimeout(() => controller1.abort(), 9500);
 
       const res1 = await fetch(ddgUrl1, {
         signal: controller1.signal,
@@ -2213,7 +2250,7 @@ export async function searchMultiPageOrganicResults(
     if (minPages >= 2) {
       try {
         const controller2 = new AbortController();
-        const timeout2 = setTimeout(() => controller2.abort(), 4500);
+        const timeout2 = setTimeout(() => controller2.abort(), 9500);
 
         let res2: Response | null = null;
         if (nextFormParams) {
@@ -2293,7 +2330,7 @@ export async function searchMultiPageOrganicResults(
         console.log(`[Crawler] [Bing Page ${page}] 🔎 GET ${bingUrl} (country: ${countryConfig.code}, cc=${countryConfig.code}, offset=${offset})`);
 
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 4500);
+        const timeout = setTimeout(() => controller.abort(), 8000);
 
         const res = await fetch(bingUrl, {
           signal: controller.signal,
