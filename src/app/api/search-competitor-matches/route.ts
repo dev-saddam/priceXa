@@ -6,21 +6,28 @@ import { CompetitorCandidateGroup } from '@/types';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { productId, tenantId } = body;
+    const {
+      productId,
+      tenantId,
+      product: clientProduct,
+      country: clientCountry,
+      currency: clientCurrency,
+    } = body;
 
-    if (!productId) {
-      return NextResponse.json({ success: false, error: 'Product ID is required' }, { status: 400 });
+    let product = clientProduct;
+    if (!product && productId) {
+      product = await getProductById(productId);
     }
 
-    const product = await getProductById(productId);
     if (!product) {
-      return NextResponse.json({ success: false, error: 'Product not found' }, { status: 404 });
+      return NextResponse.json({ success: false, error: 'Product or Product ID is required' }, { status: 400 });
     }
 
     const effectiveTenantId = tenantId || product.tenantId;
-    const tenant = (await getTenants()).find((t) => t.id === effectiveTenantId);
-    const country = tenant?.country || 'US';
-    const currency = tenant?.currency || 'USD';
+    const tenants = await getTenants();
+    const tenant = tenants.find((t) => t.id === effectiveTenantId);
+    const country = clientCountry || tenant?.country || tenant?.countryCode || 'IN';
+    const currency = clientCurrency || tenant?.currency || 'INR';
     const competitors = (await getCompetitors(effectiveTenantId)).filter((c) => c.status === 'active');
 
     // Run multi-page internet search (at least 2 pages) and discover suggested competitor listings
@@ -28,7 +35,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      productId,
+      productId: product.id || productId,
       productName: product.name,
       productCode: product.code,
       groups,

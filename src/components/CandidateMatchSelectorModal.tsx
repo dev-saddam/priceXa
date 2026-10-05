@@ -51,7 +51,7 @@ export const CandidateMatchSelectorModal: React.FC<CandidateMatchSelectorModalPr
     if (isOpen && product) {
       setIsLoading(true);
       setIsSaved(false);
-      generateCompetitorCandidates(product.id)
+      generateCompetitorCandidates(product.id, product)
         .then((groups) => {
           setCandidateGroups(groups);
           setIsLoading(false);
