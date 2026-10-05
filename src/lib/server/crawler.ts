@@ -250,10 +250,13 @@ export async function searchGoogleForDomain(
   const countryConfig = getCountryConfig(country);
   const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&num=6`;
 
+  console.log(`[Crawler] [Domain Search] Target: ${domain} | Query: "${query}" | Country: ${countryConfig.code} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl})`);
+
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
 
+    console.log(`[Crawler] [Google Domain Search] 🔎 GET ${googleUrl}`);
     const res = await fetch(googleUrl, {
       signal: controller.signal,
       headers: {
@@ -268,6 +271,12 @@ export async function searchGoogleForDomain(
     if (res.ok) {
       const html = await res.text();
       const $ = cheerio.load(html);
+      const pageTitle = $('title').text().trim();
+      console.log(`[Crawler] [Google Domain Search] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${pageTitle}"`);
+
+      if (html.includes('/httpservice/retry/enablejs') || html.includes('unusual traffic') || html.includes('robot check')) {
+        console.warn(`[Crawler] [Google Domain Search] ⚠️ Google robot/verification challenge page detected`);
+      }
 
       $('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
         const linkElem = $(el).find('a[href^="http"]').first();
@@ -298,22 +307,84 @@ export async function searchGoogleForDomain(
           results.push({ title, url: href, snippet });
         }
       });
+      console.log(`[Crawler] [Google Domain Search] ✅ Extracted ${results.length} links on ${domain}`);
+    } else {
+      console.warn(`[Crawler] [Google Domain Search] ❌ Failed: HTTP ${res.status} ${res.statusText}`);
     }
-  } catch {
-    // Continue to fallback
+  } catch (err: any) {
+    console.warn(`[Crawler] [Google Domain Search] ⚠️ Request error:`, err.message);
   }
 
+  // Fallback to DuckDuckGo if Google returned fewer than 2 results
   if (results.length < 2) {
     try {
       const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(searchQuery)}&kl=${countryConfig.ddgKl}`;
+      console.log(`[Crawler] [DuckDuckGo Domain Search] 🔎 Initiating fallback: ${ddgUrl} (kl=${countryConfig.ddgKl})`);
+
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
 
       const res = await fetch(ddgUrl, {
         signal: controller.signal,
         headers: {
           'User-Agent': getRandomUserAgent(),
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+        },
+      });
+
+      clearTimeout(timeoutId);
+
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      const pageTitle = $('title').text().trim();
+      console.log(`[Crawler] [DuckDuckGo Domain Search] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${pageTitle}"`);
+
+      if (html.includes('bots use DuckDuckGo too') || res.status === 202) {
+        console.warn(`[Crawler] [DuckDuckGo Domain Search] ⚠️ Bot challenge detected from DuckDuckGo`);
+      }
+
+      let ddgFoundCount = 0;
+      $('.result').each((_, el) => {
+        const link = $(el).find('.result__title a');
+        let href = link.attr('href') || '';
+        if (href.includes('uddg=')) {
+          const match = href.match(/uddg=([^&]+)/);
+          if (match) href = decodeURIComponent(match[1]);
+        }
+
+        const title = link.text().trim();
+        const snippet = $(el).find('.result__snippet').text().trim();
+
+        if (href && href.includes(domain) && title) {
+          results.push({ title, url: href, snippet });
+          ddgFoundCount++;
+        }
+      });
+      console.log(`[Crawler] [DuckDuckGo Domain Search] ✅ Extracted ${ddgFoundCount} links on ${domain}`);
+      if (ddgFoundCount > 0) {
+        console.log(`[Crawler] [DuckDuckGo Domain Search] 🔗 Matches: ${results.slice(-ddgFoundCount).map(r => r.url).join(', ')}`);
+      }
+    } catch (err: any) {
+      console.warn(`[Crawler] [DuckDuckGo Domain Search] ⚠️ Request error:`, err.message);
+    }
+  }
+
+  // Fallback to Bing for domain search
+  if (results.length < 2) {
+    try {
+      const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(searchQuery)}&cc=${countryConfig.code}&setlang=${countryConfig.googleHl}`;
+      console.log(`[Crawler] [Bing Domain Search] 🔎 Initiating fallback: ${bingUrl} (cc=${countryConfig.code})`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+      const res = await fetch(bingUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
         },
       });
 
@@ -322,25 +393,34 @@ export async function searchGoogleForDomain(
       if (res.ok) {
         const html = await res.text();
         const $ = cheerio.load(html);
+        const pageTitle = $('title').text().trim();
+        console.log(`[Crawler] [Bing Domain Search] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${pageTitle}"`);
 
-        $('.result').each((_, el) => {
-          const link = $(el).find('.result__title a');
-          let href = link.attr('href') || '';
-          if (href.includes('duckduckgo.com/l/?uddg=')) {
-            const match = href.match(/uddg=([^&]+)/);
-            if (match) href = decodeURIComponent(match[1]);
+        let bingCount = 0;
+        $('li.b_algo').each((_, el) => {
+          const a = $(el).find('h2 a');
+          let href = a.attr('href') || '';
+          const title = a.text().trim();
+          const snippet = $(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
+
+          if (href.includes('&u=')) {
+            const m = href.match(/[?&]u=a1([a-zA-Z0-9_\-=]+)/);
+            if (m) {
+              try {
+                href = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+              } catch {}
+            }
           }
-
-          const title = link.text().trim();
-          const snippet = $(el).find('.result__snippet').text().trim();
 
           if (href && href.includes(domain) && title) {
             results.push({ title, url: href, snippet });
+            bingCount++;
           }
         });
+        console.log(`[Crawler] [Bing Domain Search] ✅ Extracted ${bingCount} links on ${domain}`);
       }
-    } catch {
-      // Fallback complete
+    } catch (err: any) {
+      console.warn(`[Crawler] [Bing Domain Search] ⚠️ Request error:`, err.message);
     }
   }
 
@@ -1519,6 +1599,8 @@ export async function discoverProductUrlFromInternet(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
+    console.log(`[Crawler] [DuckDuckGo Discover] 🔎 GET ${ddgUrl} (country: ${countryConfig.code}, kl=${countryConfig.ddgKl})`);
+
     const res = await fetch(ddgUrl, {
       signal: controller.signal,
       headers: {
@@ -1529,10 +1611,17 @@ export async function discoverProductUrlFromInternet(
     });
     clearTimeout(timeoutId);
 
-    if (res.ok) {
-      const html = await res.text();
-      const $ = cheerio.load(html);
+    const html = await res.text();
+    const $ = cheerio.load(html);
+    const pageTitle = $('title').text().trim();
+    console.log(`[Crawler] [DuckDuckGo Discover] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${pageTitle}"`);
 
+    if (html.includes('bots use DuckDuckGo too') || res.status === 202) {
+      console.warn(`[Crawler] [DuckDuckGo Discover] ⚠️ Bot challenge detected from DuckDuckGo ("bots use DuckDuckGo too" or HTTP 202)`);
+    }
+
+    if (res.ok) {
+      let ddgFoundCount = 0;
       $('.result').each((_, el) => {
         const link = $(el).find('.result__title a');
         let href = link.attr('href') || '';
@@ -1545,17 +1634,26 @@ export async function discoverProductUrlFromInternet(
 
         if (href && !href.includes('duckduckgo.com') && !href.includes('bing.com/aclick') && !href.includes('google.com')) {
           candidates.push({ title, url: href, snippet });
+          ddgFoundCount++;
         }
       });
+      console.log(`[Crawler] [DuckDuckGo Discover] ✅ Extracted ${ddgFoundCount} candidate links`);
+      if (ddgFoundCount > 0) {
+        console.log(`[Crawler] [DuckDuckGo Discover] 🔗 Extracted links: ${candidates.slice(-ddgFoundCount).map(c => c.url).join(', ')}`);
+      }
+    } else {
+      console.warn(`[Crawler] [DuckDuckGo Discover] ❌ Returned non-OK HTTP status: ${res.status} ${res.statusText}`);
     }
   } catch (err: any) {
-    console.warn('[Crawler] DuckDuckGo search error during internet discovery:', err.message);
+    console.warn('[Crawler] [DuckDuckGo Discover] ⚠️ DuckDuckGo search error during internet discovery:', err.message);
   }
 
   // Fallback to Google if DuckDuckGo returned few results
   if (candidates.length < 2) {
     try {
       const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&num=5`;
+      console.log(`[Crawler] [Google Discover] 🔎 Initiating fallback: ${googleUrl} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl})`);
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3500);
 
@@ -1568,10 +1666,17 @@ export async function discoverProductUrlFromInternet(
       });
       clearTimeout(timeoutId);
 
-      if (res.ok) {
-        const html = await res.text();
-        const $ = cheerio.load(html);
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      const pageTitle = $('title').text().trim();
+      console.log(`[Crawler] [Google Discover] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${pageTitle}"`);
 
+      if (html.includes('/httpservice/retry/enablejs') || html.includes('unusual traffic') || html.includes('robot check')) {
+        console.warn(`[Crawler] [Google Discover] ⚠️ Google robot/verification challenge page detected`);
+      }
+
+      if (res.ok) {
+        let googleFoundCount = 0;
         $('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
           const linkElem = $(el).find('a[href^="http"]').first();
           let href = linkElem.attr('href') || '';
@@ -1584,6 +1689,7 @@ export async function discoverProductUrlFromInternet(
 
           if (href && title && !href.includes('google.com')) {
             candidates.push({ title, url: href, snippet });
+            googleFoundCount++;
           }
         });
 
@@ -1597,11 +1703,74 @@ export async function discoverProductUrlFromInternet(
 
           if (href && title && !href.includes('google.com')) {
             candidates.push({ title, url: href, snippet });
+            googleFoundCount++;
           }
         });
+        console.log(`[Crawler] [Google Discover] ✅ Extracted ${googleFoundCount} candidate links`);
+        if (googleFoundCount > 0) {
+          console.log(`[Crawler] [Google Discover] 🔗 Extracted links: ${candidates.slice(-googleFoundCount).map(c => c.url).join(', ')}`);
+        }
+      } else {
+        console.warn(`[Crawler] [Google Discover] ❌ Returned non-OK HTTP status: ${res.status} ${res.statusText}`);
       }
     } catch (err: any) {
-      console.warn('[Crawler] Google search error during internet discovery:', err.message);
+      console.warn('[Crawler] [Google Discover] ⚠️ Google search error during internet discovery:', err.message);
+    }
+  }
+
+  // Fallback to Bing if DuckDuckGo & Google returned few results
+  if (candidates.length < 2) {
+    try {
+      const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(searchQuery)}&cc=${countryConfig.code}&setlang=${countryConfig.googleHl}`;
+      console.log(`[Crawler] [Bing Discover] 🔎 Initiating fallback: ${bingUrl} (cc=${countryConfig.code})`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+      const res = await fetch(bingUrl, {
+        signal: controller.signal,
+        headers: {
+          'User-Agent': getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          'Accept-Language': `${countryConfig.googleHl},en;q=0.9`,
+        },
+      });
+      clearTimeout(timeoutId);
+
+      const html = await res.text();
+      const $ = cheerio.load(html);
+      const pageTitle = $('title').text().trim();
+      console.log(`[Crawler] [Bing Discover] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${pageTitle}"`);
+
+      if (res.ok) {
+        let bingFoundCount = 0;
+        $('li.b_algo').each((_, el) => {
+          const a = $(el).find('h2 a');
+          let href = a.attr('href') || '';
+          const title = a.text().trim();
+          const snippet = $(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
+
+          if (href.includes('&u=')) {
+            const m = href.match(/[?&]u=a1([a-zA-Z0-9_\-=]+)/);
+            if (m) {
+              try {
+                href = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+              } catch {}
+            }
+          }
+
+          if (href && title && isProductUrl(href)) {
+            candidates.push({ title, url: href, snippet });
+            bingFoundCount++;
+          }
+        });
+        console.log(`[Crawler] [Bing Discover] ✅ Extracted ${bingFoundCount} candidate links`);
+        if (bingFoundCount > 0) {
+          console.log(`[Crawler] [Bing Discover] 🔗 Extracted links: ${candidates.slice(-bingFoundCount).map(c => c.url).join(', ')}`);
+        }
+      }
+    } catch (err: any) {
+      console.warn('[Crawler] [Bing Discover] ⚠️ Bing search error during internet discovery:', err.message);
     }
   }
 
@@ -1887,6 +2056,8 @@ export async function searchMultiPageOrganicResults(
     // Google Page 1 (start=0)
     try {
       const googleUrl1 = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&pws=0&start=0&num=10`;
+      console.log(`[Crawler] [Google Page 1] 🔎 GET ${googleUrl1} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl}, start=0)`);
+
       const controller1 = new AbortController();
       const timeout1 = setTimeout(() => controller1.abort(), 4500);
 
@@ -1896,18 +2067,36 @@ export async function searchMultiPageOrganicResults(
       });
       clearTimeout(timeout1);
 
+      const html1 = await res1.text();
+      const $1 = cheerio.load(html1);
+      const title1 = $1('title').text().trim();
+      console.log(`[Crawler] [Google Page 1] 📥 Response: ${res1.status} ${res1.statusText} | HTML: ${html1.length} bytes | Title: "${title1}"`);
+
+      if (html1.includes('/httpservice/retry/enablejs') || html1.includes('unusual traffic') || html1.includes('robot check')) {
+        console.warn(`[Crawler] [Google Page 1] ⚠️ Google robot/verification challenge page detected`);
+      }
+
       if (res1.ok) {
-        const html1 = await res1.text();
+        const countBefore = results.length;
         parseGoogleHtml(html1, 1);
+        const extracted = results.length - countBefore;
+        console.log(`[Crawler] [Google Page 1] ✅ Extracted ${extracted} organic listings`);
+        if (extracted > 0) {
+          console.log(`[Crawler] [Google Page 1] 🔗 Links: ${results.slice(-extracted).map(r => r.url).join(', ')}`);
+        }
+      } else {
+        console.warn(`[Crawler] [Google Page 1] ❌ Returned non-OK HTTP status: ${res1.status} ${res1.statusText}`);
       }
     } catch (err: any) {
-      console.warn(`[Crawler] Google Page 1 search (gl=${countryConfig.googleGl}) error:`, err.message);
+      console.warn(`[Crawler] [Google Page 1] ⚠️ Request error:`, err.message);
     }
 
     // Google Page 2 (start=10)
     if (minPages >= 2) {
       try {
         const googleUrl2 = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&pws=0&start=10&num=10`;
+        console.log(`[Crawler] [Google Page 2] 🔎 GET ${googleUrl2} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl}, start=10)`);
+
         const controller2 = new AbortController();
         const timeout2 = setTimeout(() => controller2.abort(), 4500);
 
@@ -1917,12 +2106,28 @@ export async function searchMultiPageOrganicResults(
         });
         clearTimeout(timeout2);
 
+        const html2 = await res2.text();
+        const $2 = cheerio.load(html2);
+        const title2 = $2('title').text().trim();
+        console.log(`[Crawler] [Google Page 2] 📥 Response: ${res2.status} ${res2.statusText} | HTML: ${html2.length} bytes | Title: "${title2}"`);
+
+        if (html2.includes('/httpservice/retry/enablejs') || html2.includes('unusual traffic') || html2.includes('robot check')) {
+          console.warn(`[Crawler] [Google Page 2] ⚠️ Google robot/verification challenge page detected`);
+        }
+
         if (res2.ok) {
-          const html2 = await res2.text();
+          const countBefore = results.length;
           parseGoogleHtml(html2, 2);
+          const extracted = results.length - countBefore;
+          console.log(`[Crawler] [Google Page 2] ✅ Extracted ${extracted} organic listings`);
+          if (extracted > 0) {
+            console.log(`[Crawler] [Google Page 2] 🔗 Links: ${results.slice(-extracted).map(r => r.url).join(', ')}`);
+          }
+        } else {
+          console.warn(`[Crawler] [Google Page 2] ❌ Returned non-OK HTTP status: ${res2.status} ${res2.statusText}`);
         }
       } catch (err: any) {
-        console.warn(`[Crawler] Google Page 2 search (gl=${countryConfig.googleGl}) error:`, err.message);
+        console.warn(`[Crawler] [Google Page 2] ⚠️ Request error:`, err.message);
       }
     }
   };
@@ -1933,6 +2138,8 @@ export async function searchMultiPageOrganicResults(
     const ddgUrl1 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&kl=${countryConfig.ddgKl}`;
 
     try {
+      console.log(`[Crawler] [DuckDuckGo Page 1] 🔎 GET ${ddgUrl1} (country: ${countryConfig.code}, kl=${countryConfig.ddgKl})`);
+
       const controller1 = new AbortController();
       const timeout1 = setTimeout(() => controller1.abort(), 4500);
 
@@ -1946,10 +2153,17 @@ export async function searchMultiPageOrganicResults(
       });
       clearTimeout(timeout1);
 
-      if (res1.ok) {
-        const html1 = await res1.text();
-        const $1 = cheerio.load(html1);
+      const html1 = await res1.text();
+      const $1 = cheerio.load(html1);
+      const title1 = $1('title').text().trim();
+      console.log(`[Crawler] [DuckDuckGo Page 1] 📥 Response: ${res1.status} ${res1.statusText} | HTML: ${html1.length} bytes | Title: "${title1}"`);
 
+      if (html1.includes('bots use DuckDuckGo too') || res1.status === 202) {
+        console.warn(`[Crawler] [DuckDuckGo Page 1] ⚠️ Bot challenge detected from DuckDuckGo ("bots use DuckDuckGo too" or HTTP 202)`);
+      }
+
+      if (res1.ok) {
+        let p1Count = 0;
         $1('.result').each((_, el) => {
           const link = $1(el).find('.result__title a');
           let href = link.attr('href') || '';
@@ -1960,9 +2174,15 @@ export async function searchMultiPageOrganicResults(
           const title = link.text().trim();
           const snippet = $1(el).find('.result__snippet').text().trim();
           if (href && title) {
+            const prevLen = results.length;
             addResult(1, title, href, snippet);
+            if (results.length > prevLen) p1Count++;
           }
         });
+        console.log(`[Crawler] [DuckDuckGo Page 1] ✅ Extracted ${p1Count} organic listings`);
+        if (p1Count > 0) {
+          console.log(`[Crawler] [DuckDuckGo Page 1] 🔗 Links: ${results.slice(-p1Count).map(r => r.url).join(', ')}`);
+        }
 
         // Extract DDG Next Page Form Tokens for Page 2
         const nextForm = $1('form')
@@ -1979,10 +2199,15 @@ export async function searchMultiPageOrganicResults(
             if (name) formData.append(name, val);
           });
           nextFormParams = formData;
+          console.log(`[Crawler] [DuckDuckGo Page 1] 📄 Found pagination form tokens for Page 2 (keys: ${Array.from(formData.keys()).join(', ')})`);
+        } else {
+          console.log(`[Crawler] [DuckDuckGo Page 1] ℹ️ No pagination form found, falling back to offset query s=30 for Page 2`);
         }
+      } else {
+        console.warn(`[Crawler] [DuckDuckGo Page 1] ❌ Returned non-OK HTTP status: ${res1.status} ${res1.statusText}`);
       }
     } catch (err: any) {
-      console.warn('[Crawler] DuckDuckGo Page 1 search error:', err.message);
+      console.warn('[Crawler] [DuckDuckGo Page 1] ⚠️ Request error:', err.message);
     }
 
     if (minPages >= 2) {
@@ -1992,6 +2217,7 @@ export async function searchMultiPageOrganicResults(
 
         let res2: Response | null = null;
         if (nextFormParams) {
+          console.log(`[Crawler] [DuckDuckGo Page 2] 🔎 POST https://html.duckduckgo.com/html/ (form payload: ${nextFormParams.toString().slice(0, 100)}...)`);
           res2 = await fetch('https://html.duckduckgo.com/html/', {
             method: 'POST',
             body: nextFormParams,
@@ -2006,6 +2232,7 @@ export async function searchMultiPageOrganicResults(
         } else {
           // Fallback offset parameter for Page 2
           const ddgUrl2 = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=30&kl=${countryConfig.ddgKl}`;
+          console.log(`[Crawler] [DuckDuckGo Page 2] 🔎 GET ${ddgUrl2} (offset s=30, kl=${countryConfig.ddgKl})`);
           res2 = await fetch(ddgUrl2, {
             signal: controller2.signal,
             headers: {
@@ -2017,25 +2244,43 @@ export async function searchMultiPageOrganicResults(
 
         clearTimeout(timeout2);
 
-        if (res2 && res2.ok) {
+        if (res2) {
           const html2 = await res2.text();
           const $2 = cheerio.load(html2);
-          $2('.result').each((_, el) => {
-            const link = $2(el).find('.result__title a');
-            let href = link.attr('href') || '';
-            if (href.includes('uddg=')) {
-              const m = href.match(/uddg=([^&]+)/);
-              if (m) href = decodeURIComponent(m[1]);
+          const title2 = $2('title').text().trim();
+          console.log(`[Crawler] [DuckDuckGo Page 2] 📥 Response: ${res2.status} ${res2.statusText} | HTML: ${html2.length} bytes | Title: "${title2}"`);
+
+          if (html2.includes('bots use DuckDuckGo too') || res2.status === 202) {
+            console.warn(`[Crawler] [DuckDuckGo Page 2] ⚠️ Bot challenge detected from DuckDuckGo ("bots use DuckDuckGo too" or HTTP 202)`);
+          }
+
+          if (res2.ok) {
+            let p2Count = 0;
+            $2('.result').each((_, el) => {
+              const link = $2(el).find('.result__title a');
+              let href = link.attr('href') || '';
+              if (href.includes('uddg=')) {
+                const m = href.match(/uddg=([^&]+)/);
+                if (m) href = decodeURIComponent(m[1]);
+              }
+              const title = link.text().trim();
+              const snippet = $2(el).find('.result__snippet').text().trim();
+              if (href && title) {
+                const prevLen = results.length;
+                addResult(2, title, href, snippet);
+                if (results.length > prevLen) p2Count++;
+              }
+            });
+            console.log(`[Crawler] [DuckDuckGo Page 2] ✅ Extracted ${p2Count} organic listings`);
+            if (p2Count > 0) {
+              console.log(`[Crawler] [DuckDuckGo Page 2] 🔗 Links: ${results.slice(-p2Count).map(r => r.url).join(', ')}`);
             }
-            const title = link.text().trim();
-            const snippet = $2(el).find('.result__snippet').text().trim();
-            if (href && title) {
-              addResult(2, title, href, snippet);
-            }
-          });
+          } else {
+            console.warn(`[Crawler] [DuckDuckGo Page 2] ❌ Returned non-OK HTTP status: ${res2.status} ${res2.statusText}`);
+          }
         }
       } catch (err: any) {
-        console.warn('[Crawler] DuckDuckGo Page 2 search error:', err.message);
+        console.warn('[Crawler] [DuckDuckGo Page 2] ⚠️ Request error:', err.message);
       }
     }
   };
@@ -2045,6 +2290,8 @@ export async function searchMultiPageOrganicResults(
     const searchBingPage = async (page: number, offset: number) => {
       try {
         const bingUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}&first=${offset}&cc=${countryConfig.code}&setlang=${countryConfig.googleHl}`;
+        console.log(`[Crawler] [Bing Page ${page}] 🔎 GET ${bingUrl} (country: ${countryConfig.code}, cc=${countryConfig.code}, offset=${offset})`);
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 4500);
 
@@ -2058,14 +2305,17 @@ export async function searchMultiPageOrganicResults(
         });
         clearTimeout(timeout);
 
-        if (res.ok) {
-          const html = await res.text();
-          const $ = cheerio.load(html);
+        const html = await res.text();
+        const $ = cheerio.load(html);
+        const title = $('title').text().trim();
+        console.log(`[Crawler] [Bing Page ${page}] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${title}"`);
 
+        if (res.ok) {
+          let pCount = 0;
           $('li.b_algo').each((_, el) => {
             const a = $(el).find('h2 a');
             let href = a.attr('href') || '';
-            const title = a.text().trim();
+            const titleText = a.text().trim();
             const snippet = $(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
 
             if (href.includes('&u=')) {
@@ -2077,13 +2327,21 @@ export async function searchMultiPageOrganicResults(
               }
             }
 
-            if (href && title && isProductUrl(href)) {
-              addResult(page, title, href, snippet);
+            if (href && titleText && isProductUrl(href)) {
+              const prevLen = results.length;
+              addResult(page, titleText, href, snippet);
+              if (results.length > prevLen) pCount++;
             }
           });
+          console.log(`[Crawler] [Bing Page ${page}] ✅ Extracted ${pCount} organic listings`);
+          if (pCount > 0) {
+            console.log(`[Crawler] [Bing Page ${page}] 🔗 Links: ${results.slice(-pCount).map(r => r.url).join(', ')}`);
+          }
+        } else {
+          console.warn(`[Crawler] [Bing Page ${page}] ❌ Returned non-OK HTTP status: ${res.status} ${res.statusText}`);
         }
       } catch (err: any) {
-        console.warn(`[Crawler] Bing Page ${page} search error:`, err.message);
+        console.warn(`[Crawler] [Bing Page ${page}] ⚠️ Request error:`, err.message);
       }
     };
 
@@ -2095,6 +2353,11 @@ export async function searchMultiPageOrganicResults(
 
   // Run Google (with gl & hl), DuckDuckGo (with kl), and Bing (with cc) in parallel
   await Promise.allSettled([searchGoogle(), searchDuckDuckGo(), searchBing()]);
+
+  console.log(`[Crawler] Multi-page search completed: ${results.length} total unique product candidate URLs across all engines & pages.`);
+  if (results.length > 0) {
+    console.log(`[Crawler] Candidates summary:\n${results.map(r => `  [Page ${r.page}] ${r.title.slice(0, 50)} -> ${r.url}`).join('\n')}`);
+  }
 
   return results;
 }
