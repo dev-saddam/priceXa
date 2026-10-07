@@ -5,6 +5,7 @@ import {
   isZyteConfigured,
   fetchHtmlViaZyte,
   extractProductViaZyte,
+  fetchSerpViaZyte,
   zyteExtract,
 } from './zyte';
 
@@ -79,6 +80,41 @@ export function getFullBrowserHeaders(): Record<string, string> {
   };
 }
 
+export const NON_COMMERCE_DOMAINS = [
+  'goo.ne.jp',
+  'wikipedia.org',
+  'quora.com',
+  'reddit.com',
+  'answers.com',
+  'medium.com',
+  'pinterest.com',
+  'youtube.com',
+  'twitter.com',
+  'x.com',
+  'facebook.com',
+  'instagram.com',
+  'tiktok.com',
+  'linkedin.com',
+  'tumblr.com',
+  'github.com',
+  'stackoverflow.com',
+  'yahoo.co.jp',
+  'cosmopolitan.com',
+  'gq.com',
+  'vogue.com',
+  'forbes.com',
+  'nytimes.com',
+  'theverge.com',
+  'wired.com',
+  'cnet.com',
+];
+
+export function isNonCommerceDomain(domain: string): boolean {
+  if (!domain) return true;
+  const d = domain.toLowerCase().replace(/^(?:https?:\/\/)?(?:www\.)?/, '').split('/')[0];
+  return NON_COMMERCE_DOMAINS.some((nc) => d === nc || d.endsWith('.' + nc));
+}
+
 /**
  * Validates whether a URL has the structural signature of a Product Detail Page (PDP).
  * Rejects category, search, cart, blog, policies, and non-product pages.
@@ -100,27 +136,7 @@ export function isProductUrl(url: string): boolean {
   // Reject non-commercial, Q&A, forum, and social media domains
   try {
     const hostname = new URL(decoded).hostname.toLowerCase();
-    const nonCommerceDomains = [
-      'goo.ne.jp',
-      'wikipedia.org',
-      'quora.com',
-      'reddit.com',
-      'answers.com',
-      'medium.com',
-      'pinterest.com',
-      'youtube.com',
-      'twitter.com',
-      'x.com',
-      'facebook.com',
-      'instagram.com',
-      'tiktok.com',
-      'linkedin.com',
-      'tumblr.com',
-      'github.com',
-      'stackoverflow.com',
-      'yahoo.co.jp',
-    ];
-    if (nonCommerceDomains.some((d) => hostname === d || hostname.endsWith('.' + d))) {
+    if (isNonCommerceDomain(hostname)) {
       return false;
     }
   } catch {}
@@ -467,24 +483,31 @@ export async function searchGoogleForDomain(
     }
   }
 
-  // Zyte Anti-Bot Proxy Fallback for Domain Search
+  // Zyte Anti-Bot Proxy Fallback for Domain Search (using Bing search via Zyte proxy)
   if (results.length < 2 && isZyteConfigured()) {
     try {
-      console.log(`[Crawler] [Zyte Domain Search] ⚡ Fetching Google search for ${domain} via Zyte Residential Proxy...`);
-      const zyteHtml = await fetchHtmlViaZyte(googleUrl, countryConfig.code);
+      const zyteBingUrl = `https://www.bing.com/search?q=${encodeURIComponent(searchQuery)}&cc=${countryConfig.code}&setlang=${countryConfig.googleHl}`;
+      console.log(`[Crawler] [Zyte Domain Search] ⚡ Fetching Bing search for ${domain} via Zyte Residential Proxy...`);
+      const zyteHtml = await fetchHtmlViaZyte(zyteBingUrl, countryConfig.code);
       if (zyteHtml) {
         const $z = cheerio.load(zyteHtml);
         let zCount = 0;
-        $z('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
-          const linkElem = $z(el).find('a[href^="http"]').first();
-          let href = linkElem.attr('href') || '';
-          if (href.includes('/url?q=')) {
-            const m = href.match(/\/url\?q=([^&]+)/);
-            if (m) href = decodeURIComponent(m[1]);
+        $z('li.b_algo').each((_, el) => {
+          const a = $z(el).find('h2 a');
+          let href = a.attr('href') || '';
+          const title = a.text().trim();
+          const snippet = $z(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
+
+          if (href.includes('&u=')) {
+            const m = href.match(/[?&]u=a1([a-zA-Z0-9_\-=]+)/);
+            if (m) {
+              try {
+                href = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+              } catch {}
+            }
           }
-          const title = $z(el).find('h3').first().text().trim() || linkElem.text().trim();
-          const snippet = $z(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').first().text().trim();
-          if (href && href.includes(domain) && title && !href.includes('google.com')) {
+
+          if (href && href.includes(domain) && title) {
             results.push({ title, url: href, snippet });
             zCount++;
           }
@@ -2135,6 +2158,7 @@ export function resolveStoreDetails(
     'ajio.com': { name: 'AJIO', logo: '🛍️', channelType: 'marketplace', platform: 'custom_brand' },
     'nykaa.com': { name: 'Nykaa', logo: '💄', channelType: 'marketplace', platform: 'custom_brand' },
     'tatacliq.com': { name: 'Tata CLiQ', logo: '🏬', channelType: 'marketplace', platform: 'custom_brand' },
+    'shoppersstop.com': { name: 'Shoppers Stop', logo: '🛍️', channelType: 'marketplace', platform: 'custom_brand' },
     'skechers.com': { name: 'Skechers US', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
     'skechers.in': { name: 'Skechers India', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
     'skechers.co.uk': { name: 'Skechers UK', logo: '🏷️', channelType: 'brand_official', platform: 'demandware' },
@@ -2711,8 +2735,31 @@ export async function searchMultiPageOrganicResults(
     }
   };
 
-  // Run Google (with gl & hl), DuckDuckGo (with kl), and Bing (with cc) in parallel
-  await Promise.allSettled([searchGoogle(), searchDuckDuckGo(), searchBing()]);
+  // 4. Zyte Dedicated SERP API (Search API + Extract SERP)
+  const searchZyte = async () => {
+    if (!isZyteConfigured()) return;
+    try {
+      console.log(`[Crawler] [Zyte SERP] 🚀 Fetching structured SERP for: "${query}" (country: ${countryConfig.code})`);
+      const serpItems = await fetchSerpViaZyte(query, countryConfig.code);
+      let count = 0;
+      for (const item of serpItems) {
+        const itemUrl = item.url || '';
+        const itemTitle = item.title || item.name || '';
+        const itemSnippet = item.snippet || item.description || '';
+        if (itemUrl && itemUrl.startsWith('http') && isProductUrl(itemUrl)) {
+          const prevLen = results.length;
+          addResult(1, itemTitle, itemUrl, itemSnippet);
+          if (results.length > prevLen) count++;
+        }
+      }
+      console.log(`[Crawler] [Zyte SERP] ✅ Integrated ${count} direct product URLs from Zyte SERP`);
+    } catch (err: any) {
+      console.warn(`[Crawler] [Zyte SERP] ⚠️ Zyte SERP error:`, err.message);
+    }
+  };
+
+  // Run Google (with gl & hl), DuckDuckGo (with kl), Bing (with cc), and Zyte SERP in parallel
+  await Promise.allSettled([searchGoogle(), searchDuckDuckGo(), searchBing(), searchZyte()]);
 
   console.log(`[Crawler] Multi-page search completed: ${results.length} total unique product candidate URLs across all engines & pages.`);
   if (results.length > 0) {
@@ -2799,6 +2846,58 @@ export async function discoverAndGroupCompetitorCandidates(
     } catch {}
   }
 
+  // 3.5. Discover competitor stores and candidate URLs via Zyte SERP
+  if (isZyteConfigured()) {
+    try {
+      console.log(`[Crawler] [Zyte SERP Discovery] ⚡ Discovering competitor stores from Zyte SERP for "${primaryQuery}" (${effectiveCountry})...`);
+      const zyteSerpList = await fetchSerpViaZyte(primaryQuery, effectiveCountry);
+      for (const item of zyteSerpList) {
+        const domain = item.domain?.toLowerCase();
+        if (domain && domain.includes('.') && domain !== userOwnDomain && !domain.includes(userOwnDomain || '---') && !isNonCommerceDomain(domain)) {
+          if (!domainGroups.has(domain)) {
+            domainGroups.set(domain, []);
+          }
+          if (item.url && item.url.startsWith('http') && isProductUrl(item.url)) {
+            if (!domainGroups.get(domain)!.some((x) => x.url === item.url)) {
+              domainGroups.get(domain)!.push({
+                page: 1,
+                title: item.title || item.name || '',
+                url: item.url,
+                snippet: item.snippet || item.description || '',
+              });
+            }
+          }
+        }
+      }
+
+      // If fewer than 3 competitor domains discovered and cleanModelQuery is different, expand with clean model name
+      if (domainGroups.size < 3 && cleanModelQuery && cleanModelQuery.toLowerCase() !== primaryQuery.toLowerCase()) {
+        console.log(`[Crawler] [Zyte SERP Discovery] ⚡ Expanding Zyte SERP discovery with "${cleanModelQuery}"...`);
+        const modelSerpList = await fetchSerpViaZyte(cleanModelQuery, effectiveCountry);
+        for (const item of modelSerpList) {
+          const domain = item.domain?.toLowerCase();
+          if (domain && domain.includes('.') && domain !== userOwnDomain && !domain.includes(userOwnDomain || '---') && !isNonCommerceDomain(domain)) {
+            if (!domainGroups.has(domain)) {
+              domainGroups.set(domain, []);
+            }
+            if (item.url && item.url.startsWith('http') && isProductUrl(item.url)) {
+              if (!domainGroups.get(domain)!.some((x) => x.url === item.url)) {
+                domainGroups.get(domain)!.push({
+                  page: 1,
+                  title: item.title || item.name || '',
+                  url: item.url,
+                  snippet: item.snippet || item.description || '',
+                });
+              }
+            }
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Crawler] [Zyte SERP Discovery] ⚠️ Warning:`, err.message);
+    }
+  }
+
   // 4. Also ensure any preConfiguredCompetitors are covered
   // If a pre-configured competitor didn't get results in the general search, query its domain specifically
   const coveredDomains = new Set(Array.from(domainGroups.keys()));
@@ -2826,8 +2925,37 @@ export async function discoverAndGroupCompetitorCandidates(
   // 5. Verify and extract product details for candidates in each domain group
   const candidateGroups: CompetitorCandidateGroup[] = [];
 
+  let fallbackDomainSearches = 0;
   for (const [domain, rawCandidates] of domainGroups.entries()) {
-    const storeDetails = resolveStoreDetails(domain, rawCandidates[0]?.url || '');
+    let candidatesToVerify = [...rawCandidates];
+    // If no direct product URLs were found on this domain yet, only resolve via store search if we need more groups (< 3) and limit to max 2 stores
+    if (
+      (candidatesToVerify.length === 0 || !candidatesToVerify.some((c) => isProductUrl(c.url))) &&
+      candidateGroups.length < 3 &&
+      fallbackDomainSearches < 2
+    ) {
+      fallbackDomainSearches++;
+      try {
+        console.log(`[Crawler] [Zyte SERP Store Search] 🔎 Resolving product URL on discovered store: ${domain}`);
+        const domainSearchLinks = await searchGoogleForDomain(cleanModelQuery, domain, effectiveCountry);
+        if (domainSearchLinks.length > 0) {
+          candidatesToVerify = domainSearchLinks.map((d) => ({
+            page: 1,
+            title: d.title,
+            url: d.url,
+            snippet: d.snippet,
+          }));
+        }
+      } catch {}
+    }
+
+    // Only verify stores that have at least one valid product URL
+    candidatesToVerify = candidatesToVerify.filter((c) => isProductUrl(c.url));
+    if (candidatesToVerify.length === 0) {
+      continue;
+    }
+
+    const storeDetails = resolveStoreDetails(domain, candidatesToVerify[0]?.url || '');
 
     // Check if this domain matches a pre-configured competitor
     const preComp = preConfiguredCompetitors.find((c) => {
@@ -2860,7 +2988,7 @@ export async function discoverAndGroupCompetitorCandidates(
     const verifiedOptions: CandidateMatchOption[] = [];
     const deDuped = new Set<string>();
 
-    for (const raw of rawCandidates.slice(0, 4)) {
+    for (const raw of candidatesToVerify.slice(0, 4)) {
       if (deDuped.has(raw.url)) continue;
       deDuped.add(raw.url);
 

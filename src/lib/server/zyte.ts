@@ -8,14 +8,35 @@
  * 3. Headless browser JavaScript rendering to bypass anti-bot protections (Cloudflare, Akamai, Datadome).
  * 4. Resilient search engine fetching (Google, Bing, DuckDuckGo) without CAPTCHAs.
  */
+import * as cheerio from 'cheerio';
 
 export interface ZyteExtractOptions {
   url: string;
   browserHtml?: boolean;
   httpResponseBody?: boolean;
   product?: boolean;
+  serp?: boolean;
   geolocation?: string;
   timeoutMs?: number;
+}
+
+export interface ZyteSerpOrganicItem {
+  rank?: number;
+  title?: string;
+  name?: string;
+  url?: string;
+  snippet?: string;
+  description?: string;
+  displayedUrl?: string;
+  displayedUrlText?: string;
+  domain?: string;
+}
+
+export interface ZyteSerpData {
+  organicResults?: ZyteSerpOrganicItem[];
+  pageNumber?: number;
+  url?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface ZyteProductData {
@@ -43,6 +64,7 @@ export interface ZyteExtractResponse {
   browserHtml?: string;
   httpResponseBody?: string;
   product?: ZyteProductData;
+  serp?: ZyteSerpData;
   error?: string;
 }
 
@@ -92,6 +114,9 @@ export async function zyteExtract(options: ZyteExtractOptions): Promise<ZyteExtr
   if (options.product) {
     payload.product = true;
   }
+  if (options.serp) {
+    payload.serp = true;
+  }
   if (options.browserHtml) {
     payload.browserHtml = true;
   }
@@ -105,7 +130,7 @@ export async function zyteExtract(options: ZyteExtractOptions): Promise<ZyteExtr
   const authHeader = `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`;
 
   console.log(
-    `[Zyte API] 🚀 POST /v1/extract | URL: ${options.url.slice(0, 80)} | product: ${!!options.product} | browserHtml: ${!!options.browserHtml} | geo: ${options.geolocation || 'auto'}`
+    `[Zyte API] 🚀 POST /v1/extract | URL: ${options.url.slice(0, 80)} | serp: ${!!options.serp} | product: ${!!options.product} | browserHtml: ${!!options.browserHtml} | geo: ${options.geolocation || 'auto'}`
   );
 
   try {
@@ -146,7 +171,7 @@ export async function zyteExtract(options: ZyteExtractOptions): Promise<ZyteExtr
     }
 
     console.log(
-      `[Zyte API] ✅ Success HTTP ${data.statusCode || res.status} | product: ${data.product ? `"${data.product.name?.slice(0, 30)}" ($${data.product.price})` : 'none'} | HTML: ${data.browserHtml ? `${data.browserHtml.length} bytes` : (decodedBody ? `${decodedBody.length} bytes` : '0')}`
+      `[Zyte API] ✅ Success HTTP ${data.statusCode || res.status} | serp: ${data.serp ? `${data.serp.organicResults?.length || 0} items` : 'none'} | product: ${data.product ? `"${data.product.name?.slice(0, 30)}" ($${data.product.price})` : 'none'} | HTML: ${data.browserHtml ? `${data.browserHtml.length} bytes` : (decodedBody ? `${decodedBody.length} bytes` : '0')}`
     );
 
     return {
@@ -155,6 +180,7 @@ export async function zyteExtract(options: ZyteExtractOptions): Promise<ZyteExtr
       browserHtml: data.browserHtml || decodedBody,
       httpResponseBody: decodedBody,
       product: data.product,
+      serp: data.serp,
     };
   } catch (err: any) {
     console.warn(`[Zyte API] ❌ Request error:`, err.message);
@@ -199,6 +225,204 @@ export async function extractProductViaZyte(
     product: result.product,
     html: result.browserHtml,
   };
+}
+
+/**
+ * Extracts clean domain from a raw URL or displayed search snippet (e.g. "https://www.example.com › ...").
+ */
+export function extractDomainFromUrlOrDisplayed(urlOrDisplayed: string): string {
+  if (!urlOrDisplayed) return '';
+  const trimmed = urlOrDisplayed.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const u = new URL(trimmed.split(/[\s›>]/)[0]);
+      return u.hostname.replace(/^www\./, '').toLowerCase();
+    } catch {}
+  }
+  const match = trimmed.match(/https?:\/\/([^\s\/›>]+)/i) || trimmed.match(/^([a-zA-Z0-9.\-]+\.[a-z]{2,})/i);
+  if (match) {
+    return match[1].replace(/^www\./, '').toLowerCase();
+  }
+  return '';
+}
+
+/**
+ * Queries search engine results via Zyte SERP API:
+ * 1. Primary: Dedicated Zyte Search API (POST https://api.zyte.com/v1/search)
+ * 2. Fallback: Bing SERP via Zyte residential proxy (POST https://api.zyte.com/v1/extract)
+ * 3. Fallback: DuckDuckGo SERP via Zyte residential proxy (POST https://api.zyte.com/v1/extract)
+ */
+export async function fetchSerpViaZyte(
+  query: string,
+  country: string = 'US'
+): Promise<ZyteSerpOrganicItem[]> {
+  if (!isZyteConfigured()) return [];
+
+  const apiKey = getZyteApiKey();
+  if (!apiKey) return [];
+
+  const authHeader = `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`;
+  const effectiveCountry = (country || 'US').toUpperCase();
+  const results: ZyteSerpOrganicItem[] = [];
+
+  // 1. Try Zyte Dedicated Search API (https://api.zyte.com/v1/search)
+  try {
+    console.log(`[Zyte SERP] 🔎 Querying Search API for: "${query}" (domain: google.com, country: ${effectiveCountry})`);
+    const searchRes = await fetch('https://api.zyte.com/v1/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': authHeader,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        domain: 'google.com',
+        query,
+        include: ['organic'],
+        maxResults: 20,
+      }),
+    });
+
+    if (searchRes.ok) {
+      const searchData = await searchRes.json();
+      const organicList: any[] = searchData.organicResults || [];
+      if (organicList.length > 0) {
+        console.log(`[Zyte SERP] ✅ Search API returned ${organicList.length} organic items`);
+        for (const item of organicList) {
+          const rawUrl = item.url || '';
+          const disp = item.displayedUrl || item.displayedUrlText || '';
+          const domain = extractDomainFromUrlOrDisplayed(rawUrl) || extractDomainFromUrlOrDisplayed(disp);
+          results.push({
+            rank: item.rank || results.length + 1,
+            title: item.title || item.name || '',
+            snippet: item.snippet || item.description || '',
+            url: rawUrl.startsWith('http') ? rawUrl : (disp.startsWith('http') ? disp.split(/[\s›>]/)[0] : rawUrl),
+            displayedUrl: disp,
+            domain,
+          });
+        }
+      }
+    } else {
+      console.warn(`[Zyte SERP] ⚠️ /v1/search returned HTTP ${searchRes.status}`);
+    }
+  } catch (err: any) {
+    console.warn(`[Zyte SERP] ⚠️ /v1/search attempt warning:`, err.message);
+  }
+
+  // 2. Fallback: Bing via Zyte Extract Proxy (returns 200 OK without anti-bot blocks)
+  if (results.length < 5) {
+    try {
+      console.log(`[Zyte SERP] ⚡ Falling back to Bing SERP via Zyte proxy for: "${query}" (geo: ${effectiveCountry})`);
+      const bingRes = await fetch('https://api.zyte.com/v1/extract', {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: `https://www.bing.com/search?q=${encodeURIComponent(query)}&setlang=en`,
+          httpResponseBody: true,
+          geolocation: effectiveCountry,
+        }),
+      });
+
+      if (bingRes.ok) {
+        const data = await bingRes.json();
+        if (data.httpResponseBody) {
+          const html = Buffer.from(data.httpResponseBody, 'base64').toString('utf8');
+          const $ = cheerio.load(html);
+          let bCount = 0;
+          $('li.b_algo').each((idx, el) => {
+            const a = $(el).find('h2 a');
+            let href = a.attr('href') || '';
+            const title = a.text().trim();
+            const snippet = $(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
+
+            if (href.includes('&u=')) {
+              const m = href.match(/[?&]u=a1([a-zA-Z0-9_\-=]+)/);
+              if (m) {
+                try {
+                  href = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+                } catch {}
+              }
+            }
+
+            if (href && href.startsWith('http') && title) {
+              const domain = extractDomainFromUrlOrDisplayed(href);
+              results.push({
+                rank: results.length + 1,
+                title,
+                snippet,
+                url: href,
+                displayedUrl: domain,
+                domain,
+              });
+              bCount++;
+            }
+          });
+          console.log(`[Zyte SERP] ✅ Bing via Zyte extracted ${bCount} organic items`);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Zyte SERP] ⚠️ Bing fallback warning:`, err.message);
+    }
+  }
+
+  // 3. Fallback: DuckDuckGo via Zyte Extract Proxy
+  if (results.length < 5) {
+    try {
+      console.log(`[Zyte SERP] ⚡ Falling back to DuckDuckGo SERP via Zyte proxy for: "${query}" (geo: ${effectiveCountry})`);
+      const ddgRes = await fetch('https://api.zyte.com/v1/extract', {
+        method: 'POST',
+        headers: {
+          'Authorization': authHeader,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          url: `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`,
+          httpResponseBody: true,
+          geolocation: effectiveCountry,
+        }),
+      });
+
+      if (ddgRes.ok) {
+        const data = await ddgRes.json();
+        if (data.httpResponseBody) {
+          const html = Buffer.from(data.httpResponseBody, 'base64').toString('utf8');
+          const $ = cheerio.load(html);
+          let dCount = 0;
+          $('div.result:not(.result--ad)').each((idx, el) => {
+            const a = $(el).find('a.result__url, a.result__snippet, h2.result__title a');
+            let href = a.attr('href') || '';
+            const title = $(el).find('h2.result__title').text().trim();
+            const snippet = $(el).find('.result__snippet').text().trim();
+
+            if (href.includes('uddg=')) {
+              const m = href.match(/[?&]uddg=([^&]+)/);
+              if (m) href = decodeURIComponent(m[1]);
+            }
+
+            if (href && href.startsWith('http') && title) {
+              const domain = extractDomainFromUrlOrDisplayed(href);
+              results.push({
+                rank: results.length + 1,
+                title,
+                snippet,
+                url: href,
+                displayedUrl: domain,
+                domain,
+              });
+              dCount++;
+            }
+          });
+          console.log(`[Zyte SERP] ✅ DuckDuckGo via Zyte extracted ${dCount} organic items`);
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Zyte SERP] ⚠️ DuckDuckGo fallback warning:`, err.message);
+    }
+  }
+
+  return results;
 }
 
 /**
