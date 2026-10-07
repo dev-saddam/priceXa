@@ -306,7 +306,8 @@ export const dailyScanFunction = inngest.createFunction(
             const updated = await scrapeCompetitorUrl(
               match.competitorProductUrl,
               match.competitorId,
-              match.currentPrice
+              match.currentPrice,
+              tenant.country || 'US'
             );
 
             if (updated.price && updated.price !== match.currentPrice) {
@@ -400,12 +401,17 @@ export const instantScanFunction = inngest.createFunction(
       let priceChanges = 0;
       let stockChanges = 0;
 
+      const allTenants = await getTenants();
+      const currentTenant = allTenants.find((t) => t.id === tenantId);
+      const tenantCountry = currentTenant?.country || 'US';
+
       for (const match of matches) {
         try {
           const updated = await scrapeCompetitorUrl(
             match.competitorProductUrl,
             match.competitorId,
-            match.currentPrice
+            match.currentPrice,
+            tenantCountry
           );
 
           if (updated.price && updated.price !== match.currentPrice) {

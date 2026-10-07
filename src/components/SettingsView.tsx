@@ -18,6 +18,10 @@ import {
   ArrowRight,
   Database,
   ExternalLink,
+  Zap,
+  Sparkles,
+  RefreshCw,
+  Key,
 } from 'lucide-react';
 import { 
   COUNTRY_LIST,
@@ -43,6 +47,42 @@ export const SettingsView: React.FC = () => {
   const [supabaseStatus, setSupabaseStatus] = useState<any>(null);
   const [loadingSupabase, setLoadingSupabase] = useState(true);
 
+  // Zyte API Integration State
+  const [zyteStatus, setZyteStatus] = useState<any>(null);
+  const [loadingZyte, setLoadingZyte] = useState(true);
+  const [testingZyte, setTestingZyte] = useState(false);
+  const [testZyteResult, setTestZyteResult] = useState<any>(null);
+
+  const fetchZyteStatus = async () => {
+    try {
+      setLoadingZyte(true);
+      const res = await fetch('/api/zyte/status');
+      const data = await res.json();
+      setZyteStatus(data);
+    } catch {
+      setZyteStatus({ configured: false, connected: false, message: 'Could not connect to Zyte status endpoint' });
+    } finally {
+      setLoadingZyte(false);
+    }
+  };
+
+  const handleTestZyte = async () => {
+    setTestingZyte(true);
+    setTestZyteResult(null);
+    try {
+      const res = await fetch('/api/zyte/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const data = await res.json();
+      setTestZyteResult(data);
+      if (data.connected) {
+        await fetchZyteStatus();
+      }
+    } catch (err: any) {
+      setTestZyteResult({ success: false, connected: false, error: err.message });
+    } finally {
+      setTestingZyte(false);
+    }
+  };
+
   useEffect(() => {
     fetch('/api/supabase/status')
       .then((r) => r.json())
@@ -54,6 +94,8 @@ export const SettingsView: React.FC = () => {
         setSupabaseStatus({ connected: false, error: 'Failed connecting to API endpoint' });
         setLoadingSupabase(false);
       });
+
+    fetchZyteStatus();
   }, []);
 
   // Sync state if currentTenant changes (e.g., tenant switch)
@@ -400,6 +442,150 @@ export const SettingsView: React.FC = () => {
               <p className="text-[11px] text-slate-400">
                 Steps: Open <strong className="text-slate-200">Vercel &gt; Your Project &gt; Settings &gt; Environment Variables</strong>, add the 3 keys above, then click <strong className="text-slate-200">Deployments &gt; Redeploy</strong>.
               </p>
+            </div>
+          )}
+        </div>
+
+        {/* Zyte API Scraping & AI Extraction Engine */}
+        <div className="card-ambient p-5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400">
+                <Zap className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-100">
+                    Zyte API (Anti-Bot & Residential Scraping Engine)
+                  </h2>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300">
+                    AI E-Commerce Engine
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Bypasses CAPTCHAs & Cloudflare using residential proxies, and extracts verified prices via Zyte AI.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {loadingZyte ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+                  <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                  <span>Checking...</span>
+                </div>
+              ) : zyteStatus?.connected ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Active &amp; Connected</span>
+                </div>
+              ) : zyteStatus?.configured ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                  <span>Key Error / Blocked</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                  <span>Native Direct Scraping Active</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={handleTestZyte}
+                disabled={testingZyte}
+                className="px-3 py-1 rounded-lg text-[11px] font-medium bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {testingZyte ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-3 h-3" />
+                )}
+                <span>Test Connection</span>
+              </button>
+            </div>
+          </div>
+
+          {testZyteResult && (
+            <div
+              className={`p-3 rounded-xl text-xs flex items-center justify-between border ${
+                testZyteResult.connected
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              }`}
+            >
+              <span>{testZyteResult.message || testZyteResult.error}</span>
+              {testZyteResult.latencyMs && (
+                <span className="font-mono text-[10px] opacity-80">
+                  Latency: {testZyteResult.latencyMs}ms
+                </span>
+              )}
+            </div>
+          )}
+
+          {zyteStatus?.connected ? (
+            <div className="p-4 rounded-2xl bg-purple-500/[0.04] border border-purple-500/20 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">API Key</span>
+                  <span className="text-xs font-mono font-bold text-slate-200">{zyteStatus.keyMasked || 'Configured in env'}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">API Latency</span>
+                  <span className="text-xs font-mono font-bold text-emerald-400">{zyteStatus.latencyMs ? `${zyteStatus.latencyMs}ms` : 'Healthy'}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-950/60 border border-white/[0.06]">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Exit Geolocation</span>
+                  <span className="text-xs font-bold text-slate-200">{selectedCountryConfig.name} ({selectedCountryConfig.code})</span>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2 pt-1 text-[11px]">
+                <div className="px-2.5 py-1 rounded-lg bg-slate-900 border border-white/[0.08] text-slate-300 flex items-center gap-1.5">
+                  <Shield className="w-3 h-3 text-purple-400" />
+                  <span>Residential IP Proxy Pool (Cloudflare / Akamai bypass)</span>
+                </div>
+                <div className="px-2.5 py-1 rounded-lg bg-slate-900 border border-white/[0.08] text-slate-300 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-cyan-400" />
+                  <span>AI Automated E-Commerce Extraction (Price, Stock & Title)</span>
+                </div>
+                <div className="px-2.5 py-1 rounded-lg bg-slate-900 border border-white/[0.08] text-slate-300 flex items-center gap-1.5">
+                  <Globe2 className="w-3 h-3 text-emerald-400" />
+                  <span>Country Geolocation Routing ({selectedCountryConfig.code})</span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-2xl bg-purple-500/[0.06] border border-purple-500/20 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-purple-400 mt-0.5 shrink-0" />
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-purple-200">How to Configure Zyte API:</h3>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Zyte provides residential proxy IPs and automated AI extraction. When configured, PriceXa uses it to bypass Google/DuckDuckGo robot challenges and scrape product prices without blocks.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 p-3 rounded-xl border border-white/[0.08] space-y-1.5 font-mono text-[11px]">
+                <div className="flex justify-between text-slate-300">
+                  <span className="text-purple-400 font-semibold">ZYTE_API_KEY</span>
+                  <span className="text-slate-500 truncate max-w-[240px]">your_zyte_api_key_here</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+                <span>Add <strong className="text-slate-200 font-mono">ZYTE_API_KEY</strong> to <strong className="text-slate-200">.env.local</strong> or Vercel Environment Variables.</span>
+                <a
+                  href="https://www.zyte.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-400 hover:text-purple-300 flex items-center gap-1 transition-colors font-medium shrink-0"
+                >
+                  Get Zyte Key <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
             </div>
           )}
         </div>

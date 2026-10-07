@@ -93,7 +93,8 @@ export async function executeScheduledCrawl(options?: {
         const scrapeResult = await scrapeCompetitorUrl(
           match.competitorProductUrl,
           competitor.domain,
-          match.currentPrice
+          match.currentPrice,
+          tenant.country || 'US'
         );
 
         const oldPrice = match.currentPrice;

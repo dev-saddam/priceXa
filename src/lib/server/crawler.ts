@@ -1,6 +1,12 @@
 import * as cheerio from 'cheerio';
 import { Product, Competitor, CandidateMatchOption, CompetitorCandidateGroup, ChannelType, StorePlatform } from '@/types';
 import { adaptDomainForCountry, getCountryConfig } from '../countryConfig';
+import {
+  isZyteConfigured,
+  fetchHtmlViaZyte,
+  extractProductViaZyte,
+  zyteExtract,
+} from './zyte';
 
 const REALISTIC_USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
@@ -461,6 +467,35 @@ export async function searchGoogleForDomain(
     }
   }
 
+  // Zyte Anti-Bot Proxy Fallback for Domain Search
+  if (results.length < 2 && isZyteConfigured()) {
+    try {
+      console.log(`[Crawler] [Zyte Domain Search] ⚡ Fetching Google search for ${domain} via Zyte Residential Proxy...`);
+      const zyteHtml = await fetchHtmlViaZyte(googleUrl, countryConfig.code);
+      if (zyteHtml) {
+        const $z = cheerio.load(zyteHtml);
+        let zCount = 0;
+        $z('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
+          const linkElem = $z(el).find('a[href^="http"]').first();
+          let href = linkElem.attr('href') || '';
+          if (href.includes('/url?q=')) {
+            const m = href.match(/\/url\?q=([^&]+)/);
+            if (m) href = decodeURIComponent(m[1]);
+          }
+          const title = $z(el).find('h3').first().text().trim() || linkElem.text().trim();
+          const snippet = $z(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').first().text().trim();
+          if (href && href.includes(domain) && title && !href.includes('google.com')) {
+            results.push({ title, url: href, snippet });
+            zCount++;
+          }
+        });
+        console.log(`[Crawler] [Zyte Domain Search] ✅ Extracted ${zCount} links on ${domain}`);
+      }
+    } catch (zErr: any) {
+      console.warn(`[Crawler] [Zyte Domain Search] ⚠️ Zyte domain search error:`, zErr.message);
+    }
+  }
+
   return results;
 }
 
@@ -474,7 +509,7 @@ export interface ExtractedProductInfo {
   sellerName?: string;
   channelType: ChannelType;
   platform: StorePlatform;
-  extractionMethod: 'shopify_api' | 'json_ld' | 'dom_selector' | 'opengraph' | 'search_snippet' | 'simulated';
+  extractionMethod: 'shopify_api' | 'json_ld' | 'dom_selector' | 'opengraph' | 'search_snippet' | 'simulated' | 'zyte_ai_extraction';
 }
 
 /**
@@ -861,11 +896,46 @@ export async function extractPriceAndStockFromCandidate(
   url: string,
   snippet: string,
   referencePrice: number,
-  competitorDomain: string = ''
+  competitorDomain: string = '',
+  country: string = 'US'
 ): Promise<ExtractedProductInfo> {
   const domain = competitorDomain || (url.startsWith('http') ? new URL(url).hostname.replace('www.', '') : '');
   const { channelType, platform } = detectStoreArchitecture(domain, url);
   const detectedCurrency = detectCurrency(snippet, domain, 'USD');
+
+  // 0. High-Priority Zyte AI Automated E-Commerce Extraction (Bypasses Cloudflare/Datadome & Extracts Real Price)
+  if (isZyteConfigured()) {
+    try {
+      console.log(`[Crawler] [Zyte Scraping] ⚡ Requesting automated AI product extraction for: ${url} (country: ${country})`);
+      const zyteResult = await extractProductViaZyte(url, country);
+      if (zyteResult && zyteResult.product) {
+        const zp = zyteResult.product;
+        const rawPrice = zp.price !== undefined ? parsePriceValue(zp.price) : 0;
+        const regularPrice = zp.regularPrice !== undefined ? parsePriceValue(zp.regularPrice) : undefined;
+
+        if (rawPrice > 0) {
+          const discount = regularPrice && regularPrice > rawPrice ? Math.round(((regularPrice - rawPrice) / regularPrice) * 100) : undefined;
+          const isOOS = zp.availability === 'OutOfStock' || String(zp.availability || '').toLowerCase().includes('outofstock');
+          console.log(`[Crawler] [Zyte Scraping] ✅ Zyte extracted verified price: ${zp.currency || detectedCurrency} ${rawPrice} | Title: "${zp.name?.slice(0, 40)}" | Stock: ${isOOS ? 'out_of_stock' : 'in_stock'}`);
+
+          return {
+            price: Number(rawPrice.toFixed(2)),
+            regularPrice: regularPrice ? Number(regularPrice.toFixed(2)) : undefined,
+            discountPercent: discount,
+            currency: zp.currency || detectedCurrency,
+            stockStatus: isOOS ? 'out_of_stock' : 'in_stock',
+            title: zp.name || '',
+            sellerName: channelType === 'brand_official' ? 'Brand Official Store' : `${platform.toUpperCase()} Verified Seller`,
+            channelType,
+            platform,
+            extractionMethod: 'zyte_ai_extraction',
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Crawler] [Zyte Scraping] ⚠️ Zyte extraction warning:`, err.message);
+    }
+  }
 
   // 1. Try Specialized Channel Extraction
   if (channelType === 'brand_official') {
@@ -1075,6 +1145,51 @@ export async function verifyAndExtractProductDetail(
   }
 
   const { channelType, platform } = detectStoreArchitecture(competitor.domain, url);
+
+  // 0. High-Priority Zyte API AI Extraction & Anti-Bot Bypass
+  if (isZyteConfigured()) {
+    try {
+      const compCountry = (competitor as any).country || 'US';
+      console.log(`[Crawler] [Zyte Verify] ⚡ Verifying competitor candidate via Zyte API: ${url} (country: ${compCountry})`);
+      const zyteResult = await extractProductViaZyte(url, compCountry);
+      if (zyteResult && zyteResult.product && zyteResult.product.name) {
+        const zp = zyteResult.product;
+        const title = (zp.name || '').trim();
+        const matchPercent = calculateTitleMatchPercent(product.name, title, product.brand, product.code);
+
+        if (matchPercent >= 45) {
+          const rawPrice = zp.price !== undefined ? parsePriceValue(zp.price) : 0;
+          const regularPrice = zp.regularPrice !== undefined ? parsePriceValue(zp.regularPrice) : undefined;
+          const price = rawPrice > 0 ? rawPrice : product.currentPrice;
+          const discount = regularPrice && regularPrice > price ? Math.round(((regularPrice - price) / regularPrice) * 100) : undefined;
+          const isOOS = zp.availability === 'OutOfStock' || String(zp.availability || '').toLowerCase().includes('outofstock');
+
+          console.log(`[Crawler] [Zyte Verify] ✅ Zyte match verified: "${title}" (${matchPercent}%) - ${zp.currency || targetCurrency || 'USD'} ${price}`);
+
+          return {
+            id: `cand-${competitor.id}-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+            competitorId: competitor.id,
+            competitorName: competitor.name,
+            competitorDomain: competitor.domain,
+            competitorLogo: competitor.logo || (channelType === 'brand_official' ? '🏷️' : '🛒'),
+            title,
+            url,
+            matchPercent,
+            price: Number(price.toFixed(2)),
+            regularPrice: regularPrice ? Number(regularPrice.toFixed(2)) : undefined,
+            discountPercent: discount,
+            currency: zp.currency || targetCurrency || 'USD',
+            stockStatus: isOOS ? 'out_of_stock' : 'in_stock',
+            channelType,
+            platform,
+            sellerName: channelType === 'brand_official' ? 'Brand Official Store' : `${platform.toUpperCase()} Verified Buybox`,
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[Crawler] [Zyte Verify] ⚠️ Zyte verification warning:`, err.message);
+    }
+  }
 
   try {
     const controller = new AbortController();
@@ -1585,9 +1700,13 @@ export async function searchCompetitorProductCandidates(
 export async function scrapeCompetitorUrl(
   url: string,
   competitorDomain: string,
-  previousPrice: number
+  previousPrice: number,
+  country: string = 'US'
 ): Promise<ExtractedProductInfo> {
-  return extractPriceAndStockFromCandidate(url, '', previousPrice, competitorDomain);
+  const domain = competitorDomain && competitorDomain.includes('.')
+    ? competitorDomain
+    : (url.startsWith('http') ? new URL(url).hostname.replace(/^www\./, '') : '');
+  return extractPriceAndStockFromCandidate(url, '', previousPrice, domain, country);
 }
 
 export interface DiscoveredProductDetails {
@@ -1811,6 +1930,36 @@ export async function discoverProductUrlFromInternet(
     }
   }
 
+  // Zyte Anti-Bot Proxy Fallback for Internet Discovery
+  if (candidates.length < 2 && isZyteConfigured()) {
+    try {
+      console.log(`[Crawler] [Zyte Discover] ⚡ Fetching search results via Zyte Residential Anti-Bot Proxy (country: ${countryConfig.code})...`);
+      const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&num=10`;
+      const zyteHtml = await fetchHtmlViaZyte(googleSearchUrl, countryConfig.code);
+      if (zyteHtml) {
+        const $z = cheerio.load(zyteHtml);
+        let zCount = 0;
+        $z('div.g, div.tF2Cxc, div.MjjYud, div[data-sokoban-container]').each((_, el) => {
+          const linkElem = $z(el).find('a[href^="http"]').first();
+          let href = linkElem.attr('href') || '';
+          if (href.includes('/url?q=')) {
+            const m = href.match(/\/url\?q=([^&]+)/);
+            if (m) href = decodeURIComponent(m[1]);
+          }
+          const title = $z(el).find('h3').first().text().trim() || linkElem.text().trim();
+          const snippet = $z(el).find('div.VwiC3b, div.yXK7lf, span.aCOpRe').first().text().trim();
+          if (href && title && !href.includes('google.com')) {
+            candidates.push({ title, url: href, snippet });
+            zCount++;
+          }
+        });
+        console.log(`[Crawler] [Zyte Discover] ✅ Zyte extracted ${zCount} candidate links`);
+      }
+    } catch (zErr: any) {
+      console.warn(`[Crawler] [Zyte Discover] ⚠️ Zyte discover error:`, zErr.message);
+    }
+  }
+
   if (candidates.length === 0) {
     return null;
   }
@@ -1914,6 +2063,32 @@ export async function discoverProductUrlFromInternet(
     }
   } catch (err: any) {
     console.warn('[Crawler] Error enriching discovered product details:', err.message);
+  }
+
+  // Zyte AI Automated Product Details Enrichment
+  if ((!discoveredImage || !discoveredPrice) && isZyteConfigured()) {
+    try {
+      console.log(`[Crawler] [Zyte Enrich] ⚡ Enriching discovered product via Zyte AI Extraction: ${selectedUrl}`);
+      const zyteResult = await extractProductViaZyte(selectedUrl, countryConfig.code);
+      if (zyteResult && zyteResult.product) {
+        const zp = zyteResult.product;
+        if (!discoveredImage && zp.mainImage?.url) {
+          discoveredImage = zp.mainImage.url;
+        }
+        if (!discoveredPrice && zp.price !== undefined) {
+          const p = parsePriceValue(zp.price);
+          if (p > 0) discoveredPrice = p;
+        }
+        if (!discoveredCurrency && zp.currency) {
+          discoveredCurrency = zp.currency;
+        }
+        if (zp.canonicalUrl && zp.canonicalUrl.startsWith('http')) {
+          canonicalUrl = zp.canonicalUrl;
+        }
+      }
+    } catch (zErr: any) {
+      console.warn(`[Crawler] [Zyte Enrich] ⚠️ Zyte enrich warning:`, zErr.message);
+    }
   }
 
   return {
@@ -2091,8 +2266,8 @@ export async function searchMultiPageOrganicResults(
     };
 
     // Google Page 1 (start=0)
+    const googleUrl1 = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&pws=0&start=0&num=10`;
     try {
-      const googleUrl1 = `https://www.google.com/search?q=${encodeURIComponent(query)}&hl=${countryConfig.googleHl}&gl=${countryConfig.googleGl}&pws=0&start=0&num=10`;
       console.log(`[Crawler] [Google Page 1] 🔎 GET ${googleUrl1} (gl=${countryConfig.googleGl}, hl=${countryConfig.googleHl}, start=0)`);
 
       const controller1 = new AbortController();
@@ -2124,8 +2299,34 @@ export async function searchMultiPageOrganicResults(
       } else {
         console.warn(`[Crawler] [Google Page 1] ❌ Returned non-OK HTTP status: ${res1.status} ${res1.statusText}`);
       }
+
+      // Zyte Anti-Bot Bypass for Google Page 1
+      if ((html1.includes('/httpservice/retry/enablejs') || html1.includes('unusual traffic') || html1.includes('robot check') || !res1.ok) && isZyteConfigured()) {
+        try {
+          console.log(`[Crawler] [Google Page 1] ⚡ Bypassing Google robot challenge via Zyte Residential Anti-Bot Proxy...`);
+          const zyteHtml = await fetchHtmlViaZyte(googleUrl1, countryConfig.code);
+          if (zyteHtml) {
+            const countBefore = results.length;
+            parseGoogleHtml(zyteHtml, 1);
+            const extracted = results.length - countBefore;
+            console.log(`[Crawler] [Google Page 1] 🚀 Zyte extracted ${extracted} organic listings`);
+            if (extracted > 0) {
+              console.log(`[Crawler] [Google Page 1] 🔗 Links: ${results.slice(-extracted).map(r => r.url).join(', ')}`);
+            }
+          }
+        } catch (zErr: any) {
+          console.warn(`[Crawler] [Google Page 1] ⚠️ Zyte fallback error:`, zErr.message);
+        }
+      }
     } catch (err: any) {
       console.warn(`[Crawler] [Google Page 1] ⚠️ Request error:`, err.message);
+      if (isZyteConfigured()) {
+        try {
+          console.log(`[Crawler] [Google Page 1] ⚡ Network failure on direct Google, attempting Zyte proxy...`);
+          const zyteHtml = await fetchHtmlViaZyte(googleUrl1, countryConfig.code);
+          if (zyteHtml) parseGoogleHtml(zyteHtml, 1);
+        } catch {}
+      }
     }
 
     // Google Page 2 (start=10)
@@ -2162,6 +2363,25 @@ export async function searchMultiPageOrganicResults(
           }
         } else {
           console.warn(`[Crawler] [Google Page 2] ❌ Returned non-OK HTTP status: ${res2.status} ${res2.statusText}`);
+        }
+
+        // Zyte Anti-Bot Bypass for Google Page 2
+        if ((html2.includes('/httpservice/retry/enablejs') || html2.includes('unusual traffic') || html2.includes('robot check') || !res2.ok) && isZyteConfigured()) {
+          try {
+            console.log(`[Crawler] [Google Page 2] ⚡ Bypassing Google robot challenge via Zyte Residential Anti-Bot Proxy...`);
+            const zyteHtml = await fetchHtmlViaZyte(googleUrl2, countryConfig.code);
+            if (zyteHtml) {
+              const countBefore = results.length;
+              parseGoogleHtml(zyteHtml, 2);
+              const extracted = results.length - countBefore;
+              console.log(`[Crawler] [Google Page 2] 🚀 Zyte extracted ${extracted} organic listings`);
+              if (extracted > 0) {
+                console.log(`[Crawler] [Google Page 2] 🔗 Links: ${results.slice(-extracted).map(r => r.url).join(', ')}`);
+              }
+            }
+          } catch (zErr: any) {
+            console.warn(`[Crawler] [Google Page 2] ⚠️ Zyte fallback error:`, zErr.message);
+          }
         }
       } catch (err: any) {
         console.warn(`[Crawler] [Google Page 2] ⚠️ Request error:`, err.message);
@@ -2243,6 +2463,39 @@ export async function searchMultiPageOrganicResults(
       } else {
         console.warn(`[Crawler] [DuckDuckGo Page 1] ❌ Returned non-OK HTTP status: ${res1.status} ${res1.statusText}`);
       }
+
+      // Zyte Anti-Bot Bypass for DuckDuckGo Page 1
+      if ((html1.includes('bots use DuckDuckGo too') || res1.status === 202 || !res1.ok) && isZyteConfigured()) {
+        try {
+          console.log(`[Crawler] [DuckDuckGo Page 1] ⚡ Bypassing DuckDuckGo bot challenge via Zyte Residential Proxy...`);
+          const zyteHtml = await fetchHtmlViaZyte(ddgUrl1, countryConfig.code);
+          if (zyteHtml) {
+            const $z = cheerio.load(zyteHtml);
+            let zCount = 0;
+            $z('.result').each((_, el) => {
+              const link = $z(el).find('.result__title a');
+              let href = link.attr('href') || '';
+              if (href.includes('uddg=')) {
+                const m = href.match(/uddg=([^&]+)/);
+                if (m) href = decodeURIComponent(m[1]);
+              }
+              const title = link.text().trim();
+              const snippet = $z(el).find('.result__snippet').text().trim();
+              if (href && title) {
+                const prevLen = results.length;
+                addResult(1, title, href, snippet);
+                if (results.length > prevLen) zCount++;
+              }
+            });
+            console.log(`[Crawler] [DuckDuckGo Page 1] 🚀 Zyte extracted ${zCount} organic listings`);
+            if (zCount > 0) {
+              console.log(`[Crawler] [DuckDuckGo Page 1] 🔗 Links: ${results.slice(-zCount).map(r => r.url).join(', ')}`);
+            }
+          }
+        } catch (zErr: any) {
+          console.warn(`[Crawler] [DuckDuckGo Page 1] ⚠️ Zyte fallback error:`, zErr.message);
+        }
+      }
     } catch (err: any) {
       console.warn('[Crawler] [DuckDuckGo Page 1] ⚠️ Request error:', err.message);
     }
@@ -2315,6 +2568,40 @@ export async function searchMultiPageOrganicResults(
           } else {
             console.warn(`[Crawler] [DuckDuckGo Page 2] ❌ Returned non-OK HTTP status: ${res2.status} ${res2.statusText}`);
           }
+
+          // Zyte Anti-Bot Bypass for DuckDuckGo Page 2
+          if ((html2.includes('bots use DuckDuckGo too') || res2.status === 202 || !res2.ok) && isZyteConfigured()) {
+            try {
+              console.log(`[Crawler] [DuckDuckGo Page 2] ⚡ Bypassing DuckDuckGo bot challenge via Zyte Residential Proxy...`);
+              const ddgUrl2Fallback = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}&s=30&kl=${countryConfig.ddgKl}`;
+              const zyteHtml = await fetchHtmlViaZyte(ddgUrl2Fallback, countryConfig.code);
+              if (zyteHtml) {
+                const $z = cheerio.load(zyteHtml);
+                let zCount = 0;
+                $z('.result').each((_, el) => {
+                  const link = $z(el).find('.result__title a');
+                  let href = link.attr('href') || '';
+                  if (href.includes('uddg=')) {
+                    const m = href.match(/uddg=([^&]+)/);
+                    if (m) href = decodeURIComponent(m[1]);
+                  }
+                  const title = link.text().trim();
+                  const snippet = $z(el).find('.result__snippet').text().trim();
+                  if (href && title) {
+                    const prevLen = results.length;
+                    addResult(2, title, href, snippet);
+                    if (results.length > prevLen) zCount++;
+                  }
+                });
+                console.log(`[Crawler] [DuckDuckGo Page 2] 🚀 Zyte extracted ${zCount} organic listings`);
+                if (zCount > 0) {
+                  console.log(`[Crawler] [DuckDuckGo Page 2] 🔗 Links: ${results.slice(-zCount).map(r => r.url).join(', ')}`);
+                }
+              }
+            } catch (zErr: any) {
+              console.warn(`[Crawler] [DuckDuckGo Page 2] ⚠️ Zyte fallback error:`, zErr.message);
+            }
+          }
         }
       } catch (err: any) {
         console.warn('[Crawler] [DuckDuckGo Page 2] ⚠️ Request error:', err.message);
@@ -2347,8 +2634,8 @@ export async function searchMultiPageOrganicResults(
         const title = $('title').text().trim();
         console.log(`[Crawler] [Bing Page ${page}] 📥 Response: ${res.status} ${res.statusText} | HTML: ${html.length} bytes | Title: "${title}"`);
 
+        let pCount = 0;
         if (res.ok) {
-          let pCount = 0;
           $('li.b_algo').each((_, el) => {
             const a = $(el).find('h2 a');
             let href = a.attr('href') || '';
@@ -2376,6 +2663,42 @@ export async function searchMultiPageOrganicResults(
           }
         } else {
           console.warn(`[Crawler] [Bing Page ${page}] ❌ Returned non-OK HTTP status: ${res.status} ${res.statusText}`);
+        }
+
+        // Zyte Anti-Bot Bypass for Bing if blocked or returned 0 results
+        if ((!res.ok || html.includes('challenge') || pCount === 0) && isZyteConfigured()) {
+          try {
+            console.log(`[Crawler] [Bing Page ${page}] ⚡ Attempting Bing via Zyte Residential Proxy...`);
+            const zyteHtml = await fetchHtmlViaZyte(bingUrl, countryConfig.code);
+            if (zyteHtml) {
+              const $z = cheerio.load(zyteHtml);
+              let zCount = 0;
+              $z('li.b_algo').each((_, el) => {
+                const a = $z(el).find('h2 a');
+                let href = a.attr('href') || '';
+                const titleText = a.text().trim();
+                const snippet = $z(el).find('.b_caption p, .b_algoSlug, .b_lineclamp2').first().text().trim();
+                if (href.includes('&u=')) {
+                  const m = href.match(/[?&]u=a1([a-zA-Z0-9_\-=]+)/);
+                  if (m) {
+                    try {
+                      href = Buffer.from(m[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+                    } catch {}
+                  }
+                }
+                if (href && titleText && isProductUrl(href)) {
+                  const prevLen = results.length;
+                  addResult(page, titleText, href, snippet);
+                  if (results.length > prevLen) zCount++;
+                }
+              });
+              if (zCount > 0) {
+                console.log(`[Crawler] [Bing Page ${page}] 🚀 Zyte extracted ${zCount} organic listings`);
+              }
+            }
+          } catch (zErr: any) {
+            console.warn(`[Crawler] [Bing Page ${page}] ⚠️ Zyte fallback error:`, zErr.message);
+          }
         }
       } catch (err: any) {
         console.warn(`[Crawler] [Bing Page ${page}] ⚠️ Request error:`, err.message);
